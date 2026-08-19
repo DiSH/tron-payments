@@ -7,11 +7,15 @@
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
-    "test": "vitest run --passWithNoTests",
+    "test": "vitest run",
     "lint": "tsc --noEmit"
   },
   "dependencies": {
-    "@tron-payments/shared": "*"
+    "@ledgerhq/hw-app-trx": "^6.29.5",
+    "@ledgerhq/hw-transport-node-hid": "^6.29.5",
+    "@tron-payments/shared": "*",
+    "dotenv": "^16.5.0",
+    "zod": "^3.25.42"
   },
   "devDependencies": {
     "@types/node": "^22.15.21",

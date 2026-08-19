@@ -7,18 +7,32 @@
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
-    "test": "vitest run --passWithNoTests",
+    "test": "vitest run",
     "lint": "tsc --noEmit",
-    "db:migrate": "echo 'TODO: drizzle-kit migrate'",
-    "db:studio": "echo 'TODO: drizzle-kit studio'",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx src/db/migrate.ts",
+    "db:studio": "drizzle-kit studio",
+    "seed:users": "tsx src/scripts/seed-users.ts",
     "validate:config": "tsx src/scripts/validate-config.ts"
   },
   "dependencies": {
+    "@fastify/cookie": "^11.0.2",
+    "@fastify/cors": "^11.0.1",
     "@tron-payments/shared": "*",
-    "fastify": "^5.3.3"
+    "bcryptjs": "^3.0.2",
+    "dotenv": "^16.5.0",
+    "drizzle-orm": "^0.44.2",
+    "fastify": "^5.3.3",
+    "jsonwebtoken": "^9.0.2",
+    "postgres": "^3.4.7",
+    "tronweb": "^6.0.3",
+    "zod": "^3.25.42"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/jsonwebtoken": "^9.0.9",
     "@types/node": "^22.15.21",
+    "drizzle-kit": "^0.31.1",
     "tsx": "^4.19.4",
     "typescript": "^5.8.3",
     "vitest": "^3.1.4"

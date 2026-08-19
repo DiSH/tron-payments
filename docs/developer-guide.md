@@ -15,6 +15,8 @@ devbox shell
 devbox run install
 cp .env.example .env
 devbox run docker:up
+devbox run db:migrate
+devbox run seed:users -w @tron-payments/api   # dev users
 devbox run dev
 ```
 

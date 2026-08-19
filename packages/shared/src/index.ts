@@ -1,5 +1,3 @@
-/** Shared types, constants, and utilities for TRON Payments monorepo. */
-
 export const PROJECT_NAME = "tron-payments" as const;
 
 export const PAYMENT_REQUEST_STATUSES = [
@@ -31,5 +29,15 @@ export const ROLES = [
 export type Role = (typeof ROLES)[number];
 
 export const ALLOWED_OPERATION = "transfer(address,uint256)" as const;
-
 export const NETWORK_MAINNET = "tron-mainnet" as const;
+export const NETWORK_TESTNET = "tron-testnet" as const;
+
+export type Network = typeof NETWORK_MAINNET | typeof NETWORK_TESTNET;
+
+export * from "./types/payment-request.js";
+export * from "./types/config.js";
+export * from "./canonical/digest.js";
+export * from "./state-machine/transitions.js";
+export * from "./tron/address.js";
+export * from "./tron/amount.js";
+export * from "./tron/trc20.js";

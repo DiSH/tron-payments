@@ -12,7 +12,12 @@
     "build": "npm run build --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
-    "validate:config": "npm run validate:config -w @tron-payments/api"
+    "validate:config": "npm run validate:config -w @tron-payments/api",
+    "poc:ledger": "tsx scripts/ledger-poc/run-poc.ts"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3"
   },
   "engines": {
     "node": ">=22"

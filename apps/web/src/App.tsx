@@ -1,26 +1,31 @@
-import { PROJECT_NAME } from "@tron-payments/shared";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { AuthProvider } from "./contexts/AuthContext";
+import { ProtectedRoute } from "./components/Layout";
+import { DashboardPage } from "./pages/DashboardPage";
+import { NewPaymentRequestPage } from "./pages/NewPaymentRequestPage";
+import { PaymentRequestDetailPage } from "./pages/PaymentRequestDetailPage";
+import { SigningQueuePage } from "./pages/SigningQueuePage";
+import { TreasuryHealthPage } from "./pages/TreasuryHealthPage";
+import { AuditLogPage } from "./pages/AuditLogPage";
+import { LoginPage } from "./pages/LoginPage";
 
 export function App() {
   return (
-    <main style={{ fontFamily: "system-ui, sans-serif", padding: "2rem" }}>
-      <h1>TRON Payments</h1>
-      <p>
-        {PROJECT_NAME} — remote 2-of-3 multisig USDT treasury MVP
-      </p>
-      <p style={{ color: "#666" }}>
-        Web UI skeleton. See <code>.kiro/steering/project-bible.md</code> for requirements.
-      </p>
-      <section
-        style={{
-          marginTop: "1.5rem",
-          padding: "1rem",
-          background: "#fff3cd",
-          border: "1px solid #ffc107",
-          borderRadius: "4px",
-        }}
-      >
-        <strong>⚠ TRON Mainnet</strong> — all payments are irreversible on-chain operations.
-      </section>
-    </main>
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route element={<ProtectedRoute />}>
+            <Route index element={<DashboardPage />} />
+            <Route path="requests/new" element={<NewPaymentRequestPage />} />
+            <Route path="requests/:id" element={<PaymentRequestDetailPage />} />
+            <Route path="signing-queue" element={<SigningQueuePage />} />
+            <Route path="treasury" element={<TreasuryHealthPage />} />
+            <Route path="audit" element={<AuditLogPage />} />
+          </Route>
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
   );
 }

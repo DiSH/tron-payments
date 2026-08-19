@@ -33,6 +33,7 @@
       "test": "npm run test --workspaces --if-present",
       "db:migrate": "npm run db:migrate -w @tron-payments/api",
       "db:studio": "npm run db:studio -w @tron-payments/api",
+      "seed:users": "npm run seed:users -w @tron-payments/api",
       "validate:config": "npm run validate:config -w @tron-payments/api",
       "docker:up": "docker compose up -d",
       "docker:down": "docker compose down",
