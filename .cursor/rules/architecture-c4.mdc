@@ -1,0 +1,105 @@
+---
+description: TRON Payments C4 architecture guardrails and placement rules
+alwaysApply: true
+---
+
+# TRON Payments — C4 Architecture Guardrails
+
+Canonical reference: **`docs/architecture.md`**. This rule is a session-level summary.
+
+## C1 — Actors and External Systems
+
+| Actor | Access |
+|---|---|
+| Finance Requester | Create payment requests |
+| Signer A / B / C | Review + sign with Ledger |
+| Executor | Broadcast after threshold |
+| Admin | Users, config, reference data |
+| Auditor | Read-only audit access |
+
+External: TRON Mainnet RPC, TronScan, Corporate OIDC (or email+TOTP), Ledger hardware wallets.
+
+## C2 — Containers
+
+```mermaid
+flowchart TB
+  WEB[WebSPA_React] --> API[API_Fastify]
+  SIGN[SignerClient_Local] --> API
+  SIGN --> LED[Ledger_USB_HID]
+  WEB -->|localhost/deep_link| SIGN
+  API --> PG[(PostgreSQL)]
+  API --> TRON[TRON_RPC]
+```
+
+| Container | Must stay |
+|---|---|
+| Web SPA | React + Vite; thin pages; API client in services/ |
+| API | Fastify; Drizzle; no signing capability |
+| Signer Client | Local only; Ledger via USB/HID; never on server |
+| PostgreSQL | Append-only audit; optimistic locking on requests |
+
+**Forbidden:** backend Ledger access, private keys anywhere, browser Ledger on hosted SPA, arbitrary smart contract calls, raw tx upload via UI.
+
+## C3 — Component Map
+
+| Domain | API | Web | Signer | Shared |
+|---|---|---|---|---|
+| Auth/RBAC | `routes/auth.ts` | login pages | token for signing session | types |
+| Payment requests | `routes/payment-requests.ts`, `services/payment-request.service.ts` | `pages/NewPaymentRequest.tsx`, `PaymentRequestDetail.tsx` | — | state-machine |
+| Transaction build | `services/transaction-builder.service.ts` | digest preview | payload re-validation | `tron/`, `canonical/` |
+| Signatures | `routes/signatures.ts`, `services/signature-verifier.service.ts` | sign button + checkbox | `ledger/tron-signer.ts` | — |
+| Broadcast | `routes/broadcast.ts`, `workers/broadcast.worker.ts` | broadcast confirmation | — | — |
+| Treasury | `routes/treasury.ts`, `services/permission-verifier.service.ts` | `TreasuryHealth.tsx` | — | `tron/` |
+| Audit | `routes/audit.ts`, `services/audit.service.ts` | `AuditLog.tsx` | — | — |
+| Config | `config/`, startup validation | read-only display | local signer config | constants |
+
+## C4 — Domain Flows (one-liners)
+
+| Domain | Flow |
+|---|---|
+| **Create request** | Web form → API validates → build USDT transfer tx → store canonical payload → AWAITING_SIGNATURES |
+| **Sign** | Web checkbox → signing token → local signer fetches payload → Ledger signs → API verifies ECDSA + getSignWeight |
+| **Broadcast** | Executor confirms → API re-validates all gates → broadcasttransaction → poll confirmation → CONFIRMED |
+| **Audit** | Every mutation → append AuditEvent with before/after state |
+| **Config check** | Startup + pre-payment → read on-chain permissions → block if mismatch |
+
+## Where to Put New Code
+
+| Feature | Frontend | Backend | Signer | Shared | DB |
+|---|---|---|---|---|---|
+| New page | `apps/web/src/pages/` | — | — | — | — |
+| API route | — | `apps/api/src/routes/` | — | — | migration |
+| TRON logic | — | via shared | via shared | `packages/shared/src/tron/` | — |
+| Canonical hash | — | via shared | via shared | `packages/shared/src/canonical/` | — |
+| State machine | — | via shared | — | `packages/shared/src/state-machine/` | — |
+| Ledger | — | **never** | `apps/signer/src/ledger/` | — | — |
+| Audit | — | `services/audit.service.ts` | — | — | `audit_events` |
+| Schema | — | — | — | — | migrations append-only |
+
+## Architecture Change Gate
+
+**Ask the user first.** Before implementing anything that changes system boundaries, signing model, or security invariants — pause and get explicit approval.
+
+**Then update docs** in the same change set:
+
+| Trigger | Update |
+|---|---|
+| New container / external system | `docs/architecture.md` C1–C2 |
+| New component group / flow | `docs/architecture.md` C3–C4 |
+| Invariant change | `project-bible.md` §2 + this file |
+
+## Architecture Change Checklist
+
+```text
+[ ] User explicitly approved architecture change
+[ ] docs/architecture.md updated
+[ ] project-bible.md updated if invariants changed
+[ ] architecture-c4.mdc updated if guardrails changed
+[ ] No private keys introduced
+[ ] Ledger access remains in apps/signer only
+[ ] Canonical payload changes have migration plan
+[ ] Audit events for new mutations
+[ ] Tests for new behavior
+[ ] .env.example updated
+[ ] No mainnet funds before testnet POC passes
+```

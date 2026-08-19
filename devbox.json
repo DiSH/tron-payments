@@ -1,0 +1,42 @@
+{
+  "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/0.17.2/.schema/devbox.schema.json",
+  "packages": [
+    "nodejs@22",
+    "git@latest",
+    "docker-client@latest",
+    "docker-compose@latest",
+    "postgresql@16",
+    "python3@latest",
+    "gcc@latest",
+    "gnumake@latest",
+    "pkg-config@latest",
+    "openssl@latest",
+    "cacert@latest"
+  ],
+  "env": {
+    "NODE_ENV": "development"
+  },
+  "shell": {
+    "init_hook": [
+      "echo 'TRON Payments devbox ready. Run: devbox run install && devbox run dev'",
+      "node --version",
+      "npm --version"
+    ],
+    "scripts": {
+      "install": "npm install",
+      "dev": "docker compose up -d postgres && npm run dev --workspaces --if-present",
+      "dev:api": "npm run dev -w @tron-payments/api",
+      "dev:web": "npm run dev -w @tron-payments/web",
+      "dev:signer": "npm run dev -w @tron-payments/signer",
+      "build": "npm run build --workspaces --if-present",
+      "lint": "npm run lint --workspaces --if-present",
+      "test": "npm run test --workspaces --if-present",
+      "db:migrate": "npm run db:migrate -w @tron-payments/api",
+      "db:studio": "npm run db:studio -w @tron-payments/api",
+      "validate:config": "npm run validate:config -w @tron-payments/api",
+      "docker:up": "docker compose up -d",
+      "docker:down": "docker compose down",
+      "docker:logs": "docker compose logs -f"
+    }
+  }
+}

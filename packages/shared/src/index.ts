@@ -1,0 +1,35 @@
+/** Shared types, constants, and utilities for TRON Payments monorepo. */
+
+export const PROJECT_NAME = "tron-payments" as const;
+
+export const PAYMENT_REQUEST_STATUSES = [
+  "DRAFT",
+  "AWAITING_SIGNATURES",
+  "PARTIALLY_SIGNED",
+  "READY_TO_BROADCAST",
+  "BROADCASTING",
+  "BROADCASTED",
+  "CONFIRMED",
+  "BROADCAST_FAILED",
+  "EXPIRED",
+  "CANCELLED_IN_APP",
+  "REJECTED",
+] as const;
+
+export type PaymentRequestStatus = (typeof PAYMENT_REQUEST_STATUSES)[number];
+
+export const ROLES = [
+  "requester",
+  "signer_a",
+  "signer_b",
+  "signer_c",
+  "executor",
+  "admin",
+  "auditor",
+] as const;
+
+export type Role = (typeof ROLES)[number];
+
+export const ALLOWED_OPERATION = "transfer(address,uint256)" as const;
+
+export const NETWORK_MAINNET = "tron-mainnet" as const;

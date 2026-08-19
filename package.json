@@ -1,0 +1,20 @@
+{
+  "name": "tron-payments",
+  "private": true,
+  "version": "0.0.0",
+  "packageManager": "npm@10.9.4",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "docker compose up -d postgres && npm run dev --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "validate:config": "npm run validate:config -w @tron-payments/api"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

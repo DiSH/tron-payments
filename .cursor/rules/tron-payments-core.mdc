@@ -1,0 +1,99 @@
+---
+description: TRON Payments core agent rules — read bible + architecture before changes
+alwaysApply: true
+---
+
+# TRON Payments — Core Agent Rules
+
+Read authoritative docs **before** making changes:
+
+| Document | Path | When |
+|---|---|---|
+| Project Bible (SSOT) | `.kiro/steering/project-bible.md` | Product rules, security invariants, domain model |
+| C4 Architecture | `docs/architecture.md` | System boundaries, containers, domain flows |
+| Agent setup | `AGENTS.md` | Commands, devbox, quick architecture ref |
+
+## Decision Hierarchy
+
+1. Production runtime + applied migrations
+2. Security invariants (bible §2)
+3. Project Bible
+4. `docs/architecture.md`
+5. Feature specs (`.kiro/specs/`, `docs/`)
+6. Source code, README
+
+## Before Coding
+
+1. Read bible sections relevant to your task (security §2, domain §6, flows §7, Ledger §11).
+2. Read `docs/architecture.md` C3/C4 for your component (api, web, signer, shared).
+3. Confirm task does not violate security invariants.
+4. For Ledger/signing work: confirm testnet POC status (bible §11.2).
+
+## Top Invariants
+
+1. **No private keys** — seed phrases, private keys, PINs never enter any part of the system.
+2. **Ledger local-only** — USB/HID signing happens only in `apps/signer` on signer's machine.
+3. **Server cannot sign** — backend has no signing capability; no `multiSign` with private key.
+4. **Immutable payload** — after first signature, recipient/amount/token/treasury/permission/expiration are frozen.
+5. **Threshold gate** — broadcast only after verified on-chain weight ≥ 2.
+6. **USDT transfer only** — single allowlisted contract, method `transfer(address,uint256)` only.
+7. **No float for money** — use `bigint` or decimal string libraries for USDT amounts.
+8. **Canonical hash** — deterministic digest in `packages/shared`; unit tested.
+9. **State machine** — explicit payment request status transitions; no ad-hoc status changes.
+10. **Audit append-only** — every mutation creates AuditEvent; no UPDATE/DELETE on audit history.
+11. **RBAC in DB** — roles not hardcoded in UI.
+12. **Signature recovery** — server recovers signer address from ECDSA; never trusts client address alone.
+13. **Idempotent broadcast** — no silent retries; ambiguous results logged, not auto-retried.
+14. **Testnet first** — no mainnet funds before POC + acceptance suite pass.
+15. **Scope** — minimal diff; no drive-by refactors.
+16. **Devbox** — use `devbox run` commands; do not assume global tool versions.
+17. **Migrations** — append-only under `apps/api/src/db/migrations/`; never edit existing files.
+
+## Commands
+
+- Shell: `devbox shell`
+- Install: `devbox run install`
+- Dev (all): `devbox run dev`
+- Dev (single): `devbox run dev:api` / `dev:web` / `dev:signer`
+- Test: `devbox run test`
+- Lint: `devbox run lint`
+- DB migrate: `devbox run db:migrate`
+- Config validate: `devbox run validate:config`
+- Docker: `devbox run docker:up` / `docker:down`
+
+Environment: copy `.env.example` → `.env`. Never commit `.env`.
+
+## Architecture Changes
+
+**Ask before changing architecture.** If a task would add or alter any of the following, **stop and ask the user for explicit approval**:
+
+- A new **container** (standalone service, new deployable)
+- **Ledger access** from backend or web UI (browser WebHID on hosted SPA)
+- **Private key handling** anywhere in the codebase
+- New **token type** or **smart contract operation** beyond USDT transfer
+- Change to **canonical payload schema** (affects in-flight requests)
+- Change to **signing model** or **threshold logic**
+
+Describe the proposed change, which C4 level is affected, and which docs you will update. Proceed only after user confirms.
+
+**After approval**, update docs in the same PR/session:
+
+1. `docs/architecture.md`
+2. `.kiro/steering/project-bible.md` if invariants changed
+3. `.cursor/rules/architecture-c4.mdc` if guardrails changed
+4. `AGENTS.md` if commands changed
+
+See `docs/architecture.md` → "Architecture Change Checklist".
+
+## Explicit Prohibitions
+
+- Ask user for seed phrase, private key, or PIN
+- Use private keys in backend, frontend, CLI, `.env`, or tests
+- Backend access to user's Ledger
+- `tronWeb.trx.multiSign(..., privateKey, ...)` in production
+- Arbitrary raw transaction upload via UI
+- On-chain permission changes through MVP
+- Float/Number for USDT amounts
+- Broadcast without signature verification + weight ≥ 2
+- Auto-retry broadcast on ambiguous results
+- Mainnet payments before testnet POC passes

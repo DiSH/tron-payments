@@ -1,0 +1,43 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-tron_payments}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tron_payments_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-tron_payments}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-tron_payments}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # API and Web are started via devbox/npm for hot reload during development.
+  # Uncomment for containerized staging-like runs:
+  #
+  # api:
+  #   build:
+  #     context: .
+  #     dockerfile: apps/api/Dockerfile
+  #   env_file: .env
+  #   ports:
+  #     - "${API_PORT:-3000}:3000"
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #
+  # web:
+  #   build:
+  #     context: .
+  #     dockerfile: apps/web/Dockerfile
+  #   ports:
+  #     - "${WEB_PORT:-5173}:5173"
+  #   depends_on:
+  #     - api
+
+volumes:
+  postgres_data:

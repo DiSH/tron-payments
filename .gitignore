@@ -1,0 +1,50 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build
+dist/
+build/
+.next/
+*.tsbuildinfo
+
+# Devbox
+.devbox/
+
+# Environment & secrets
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Test / coverage
+coverage/
+.nyc_output/
+
+# Docker volumes (local)
+.docker-data/
+
+# Ledger / signer local config (may contain derivation paths)
+signer.local.json
+*.local.json
+
+# Misc
+tmp/
+.tmp/
+*.pem
+*.key
