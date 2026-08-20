@@ -1,21 +1,15 @@
 import { z } from "zod";
-import type { TreasuryConfig } from "@tron-payments/shared";
+import {
+  addressesEqual,
+  type SignerConfig,
+  type TreasuryConfig,
+} from "@tron-payments/shared";
 
 const envSchema = z.object({
   NODE_ENV: z.string().default("development"),
   NETWORK: z.enum(["tron-mainnet", "tron-testnet"]).default("tron-mainnet"),
   TRON_RPC_URL: z.string().url(),
   TRON_RPC_API_KEY: z.string().optional(),
-  TREASURY_ADDRESS: z.string().min(1),
-  ACTIVE_PERMISSION_ID: z.coerce.number().int().positive(),
-  ACTIVE_PERMISSION_NAME: z.string().default("Treasury payments"),
-  THRESHOLD: z.coerce.number().int().positive().default(2),
-  SIGNER_A_ADDRESS: z.string().min(1),
-  SIGNER_A_LABEL: z.string().default("Finance A"),
-  SIGNER_B_ADDRESS: z.string().min(1),
-  SIGNER_B_LABEL: z.string().default("Finance B"),
-  SIGNER_C_ADDRESS: z.string().min(1),
-  SIGNER_C_LABEL: z.string().default("Finance C"),
   USDT_CONTRACT_ADDRESS: z.string().min(1),
   USDT_DECIMALS: z.coerce.number().int().default(6),
   TRANSACTION_TTL_SECONDS: z.coerce.number().int().default(1800),
@@ -37,37 +31,32 @@ const envSchema = z.object({
 
 export type AppEnv = z.infer<typeof envSchema>;
 
+export interface PolicyConfig {
+  network: string;
+  usdtContractAddress: string;
+  usdtDecimals: number;
+  transactionTtlSeconds: number;
+  maxPaymentAmountRaw: string;
+  dailyCumulativeLimitRaw: string | null;
+  recipientAllowlistEnabled: boolean;
+  requiredConfirmationsBeforeBroadcast: number;
+}
+
+export type StoredTreasuryFields = {
+  treasuryAddress: string;
+  activePermissionId: number;
+  activePermissionName: string;
+  threshold: number;
+  signers: SignerConfig[];
+};
+
 export function loadEnv(): AppEnv {
   return envSchema.parse(process.env);
 }
 
-export function envToTreasuryConfig(env: AppEnv): TreasuryConfig {
+export function envToPolicyConfig(env: AppEnv): PolicyConfig {
   return {
     network: env.NETWORK,
-    treasuryAddress: env.TREASURY_ADDRESS,
-    activePermissionId: env.ACTIVE_PERMISSION_ID,
-    activePermissionName: env.ACTIVE_PERMISSION_NAME,
-    threshold: env.THRESHOLD,
-    signers: [
-      {
-        label: env.SIGNER_A_LABEL,
-        address: env.SIGNER_A_ADDRESS,
-        weight: 1,
-        role: "signer_a",
-      },
-      {
-        label: env.SIGNER_B_LABEL,
-        address: env.SIGNER_B_ADDRESS,
-        weight: 1,
-        role: "signer_b",
-      },
-      {
-        label: env.SIGNER_C_LABEL,
-        address: env.SIGNER_C_ADDRESS,
-        weight: 1,
-        role: "signer_c",
-      },
-    ],
     usdtContractAddress: env.USDT_CONTRACT_ADDRESS,
     usdtDecimals: env.USDT_DECIMALS,
     transactionTtlSeconds: env.TRANSACTION_TTL_SECONDS,
@@ -76,6 +65,20 @@ export function envToTreasuryConfig(env: AppEnv): TreasuryConfig {
     recipientAllowlistEnabled: env.RECIPIENT_ALLOWLIST_ENABLED ?? false,
     requiredConfirmationsBeforeBroadcast:
       env.REQUIRED_CONFIRMATIONS_BEFORE_BROADCAST,
+  };
+}
+
+export function mergeTreasuryConfig(
+  policy: PolicyConfig,
+  stored: StoredTreasuryFields,
+): TreasuryConfig {
+  return {
+    ...policy,
+    treasuryAddress: stored.treasuryAddress,
+    activePermissionId: stored.activePermissionId,
+    activePermissionName: stored.activePermissionName,
+    threshold: stored.threshold,
+    signers: stored.signers,
   };
 }
 
@@ -90,7 +93,8 @@ export function getSignerByAddress(
   config: TreasuryConfig,
   address: string,
 ): TreasuryConfig["signers"][number] | undefined {
-  return config.signers.find(
-    (s) => s.address.toLowerCase() === address.toLowerCase(),
-  );
+  return config.signers.find((s) => addressesEqual(s.address, address));
 }
+
+/** Re-export for callers that still expect the type from this module. */
+export type { TreasuryConfig };

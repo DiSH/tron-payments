@@ -30,6 +30,7 @@
 ```bash
 devbox run docker:up
 devbox run db:migrate
+# Configure treasury via Admin → Treasury Settings (web UI), then:
 devbox run validate:config
 tsx scripts/ledger-poc/run-poc.ts
 devbox run dev:signer

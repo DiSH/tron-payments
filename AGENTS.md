@@ -34,7 +34,7 @@ devbox run install        # npm install (all workspaces)
 devbox run docker:up      # start PostgreSQL
 devbox run dev            # start api + web + signer dev servers
 devbox run test           # run all workspace tests
-devbox run validate:config # validate treasury config against TRON RPC
+devbox run validate:config # validate DB treasury config against TRON RPC (exit 0 if not configured)
 ```
 
 Runtime: Node 22 + npm (canonical package manager; `packageManager` is `npm@10.9.4`).
@@ -48,7 +48,7 @@ Runtime: Node 22 + npm (canonical package manager; `packageManager` is `npm@10.9
 | `devbox run lint` | Lint all workspaces |
 | `devbox run build` | Build all workspaces |
 
-Copy `.env.example` to `.env` and fill in treasury/signers/RPC before running.
+Copy `.env.example` to `.env` and fill in RPC / DB / auth. Configure treasury address and signers via Admin → Treasury Settings after first login.
 
 ### Security rules (non-negotiable)
 

@@ -7,6 +7,7 @@ import { PaymentRequestDetailPage } from "./pages/PaymentRequestDetailPage";
 import { SigningQueuePage } from "./pages/SigningQueuePage";
 import { TreasuryHealthPage } from "./pages/TreasuryHealthPage";
 import { AuditLogPage } from "./pages/AuditLogPage";
+import { AdminTreasuryConfigPage } from "./pages/AdminTreasuryConfigPage";
 import { LoginPage } from "./pages/LoginPage";
 
 export function App() {
@@ -21,6 +22,7 @@ export function App() {
             <Route path="requests/:id" element={<PaymentRequestDetailPage />} />
             <Route path="signing-queue" element={<SigningQueuePage />} />
             <Route path="treasury" element={<TreasuryHealthPage />} />
+            <Route path="admin/treasury" element={<AdminTreasuryConfigPage />} />
             <Route path="audit" element={<AuditLogPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />

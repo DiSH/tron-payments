@@ -49,9 +49,9 @@ flowchart TB
 | Transaction build | `services/transaction-builder.service.ts` | digest preview | payload re-validation | `tron/`, `canonical/` |
 | Signatures | `routes/signatures.ts`, `services/signature-verifier.service.ts` | sign button + checkbox | `ledger/tron-signer.ts` | — |
 | Broadcast | `routes/broadcast.ts`, `workers/broadcast.worker.ts` | broadcast confirmation | — | — |
-| Treasury | `routes/treasury.ts`, `services/permission-verifier.service.ts` | `TreasuryHealth.tsx` | — | `tron/` |
+| Treasury | `routes/treasury.ts`, `services/treasury-config.service.ts` | `TreasuryHealth.tsx`, `AdminTreasuryConfigPage.tsx` | — | `tron/` |
 | Audit | `routes/audit.ts`, `services/audit.service.ts` | `AuditLog.tsx` | — | — |
-| Config | `config/`, startup validation | read-only display | local signer config | constants |
+| Config | `config/` (policy env) + `treasury_settings` DB; admin save validates on-chain | read-only public + admin wizard | local signer config | constants |
 
 ## C4 — Domain Flows (one-liners)
 
@@ -61,7 +61,7 @@ flowchart TB
 | **Sign** | Web checkbox → signing token → local signer fetches payload → Ledger signs → API verifies ECDSA + getSignWeight |
 | **Broadcast** | Executor confirms → API re-validates all gates → broadcasttransaction → poll confirmation → CONFIRMED |
 | **Audit** | Every mutation → append AuditEvent with before/after state |
-| **Config check** | Startup + pre-payment → read on-chain permissions → block if mismatch |
+| **Config check** | Startup + admin save + pre-payment → read on-chain permissions → block if mismatch / unconfigured |
 
 ## Where to Put New Code
 

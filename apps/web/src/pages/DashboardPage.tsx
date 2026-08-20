@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../lib/api";
+import { useAuth } from "../contexts/AuthContext";
 
 export function DashboardPage() {
+  const { hasRole } = useAuth();
   const [config, setConfig] = useState<Record<string, unknown> | null>(null);
   const [balances, setBalances] = useState<Record<string, unknown> | null>(null);
   const [requests, setRequests] = useState<Array<Record<string, unknown>>>([]);
@@ -28,6 +30,8 @@ export function DashboardPage() {
     ),
   );
 
+  const configured = config?.configured !== false && Boolean(config?.treasuryAddress);
+
   return (
     <div>
       <h1>Dashboard</h1>
@@ -42,8 +46,16 @@ export function DashboardPage() {
             marginBottom: "1rem",
           }}
         >
-          <strong>Critical:</strong> Treasury configuration validation failed.
-          New requests and broadcast are blocked.
+          <strong>Critical:</strong>{" "}
+          {configured
+            ? "Treasury configuration validation failed. New requests and broadcast are blocked."
+            : "Treasury is not configured. New requests and broadcast are blocked."}
+          {hasRole("admin") && (
+            <>
+              {" "}
+              <Link to="/admin/treasury">Configure treasury →</Link>
+            </>
+          )}
         </div>
       )}
 

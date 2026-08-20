@@ -58,7 +58,7 @@ Read authoritative docs **before** making changes:
 - Test: `devbox run test`
 - Lint: `devbox run lint`
 - DB migrate: `devbox run db:migrate`
-- Config validate: `devbox run validate:config`
+- Config validate: `devbox run validate:config` (DB treasury config vs chain; exit 0 if not configured)
 - Docker: `devbox run docker:up` / `docker:down`
 
 Environment: copy `.env.example` → `.env`. Never commit `.env`.

@@ -1,11 +1,16 @@
 import "dotenv/config";
-import { db, sql } from "./db/client.js";
-import { AuthService } from "./services/auth.service.js";
-import { loadEnv } from "./config/env.js";
+import { sql } from "../db/client.js";
+import { AuthService } from "../services/auth.service.js";
+import { loadEnv } from "../config/env.js";
 
 async function main() {
   const env = loadEnv();
   const auth = new AuthService(env.JWT_SECRET);
+
+  // Optional: bind seed signers if addresses are provided (legacy/dev convenience).
+  // Primary path: configure treasury via Admin UI, then assign signer addresses to users separately.
+  const signerA = process.env.SIGNER_A_ADDRESS || undefined;
+  const signerB = process.env.SIGNER_B_ADDRESS || undefined;
 
   const seeds = [
     {
@@ -17,13 +22,13 @@ async function main() {
       email: "signer-a@example.com",
       password: "changeme-signer-a",
       roles: ["signer_a", "requester"] as const,
-      signerAddress: env.SIGNER_A_ADDRESS,
+      signerAddress: signerA,
     },
     {
       email: "signer-b@example.com",
       password: "changeme-signer-b",
       roles: ["signer_b"] as const,
-      signerAddress: env.SIGNER_B_ADDRESS,
+      signerAddress: signerB,
     },
     {
       email: "admin@example.com",

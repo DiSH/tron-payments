@@ -4,19 +4,33 @@
  * Usage (with Ledger connected and Tron app open):
  *   devbox run -- npm run poc:ledger -w @tron-payments/api
  *
- * Requires env:
- *   TRON_RPC_URL, TREASURY_ADDRESS, ACTIVE_PERMISSION_ID, SIGNER_* addresses
+ * Requires:
+ *   - TRON_RPC_URL and policy env vars
+ *   - Treasury configured via Admin → Treasury Settings (DB)
  */
 
 import "dotenv/config";
-import { loadEnv, envToTreasuryConfig } from "../../apps/api/src/config/env.js";
+import { loadEnv } from "../../apps/api/src/config/env.js";
+import { AuditService } from "../../apps/api/src/services/audit.service.js";
 import { createTronRpcService } from "../../apps/api/src/services/tron-rpc.service.js";
 import { TransactionBuilderService } from "../../apps/api/src/services/transaction-builder.service.js";
+import { TreasuryConfigService } from "../../apps/api/src/services/treasury-config.service.js";
 
 async function main() {
   const env = loadEnv();
-  const config = envToTreasuryConfig(env);
   const tronRpc = createTronRpcService(env.TRON_RPC_URL, env.TRON_RPC_API_KEY);
+  const treasuryConfig = new TreasuryConfigService(
+    env,
+    tronRpc,
+    new AuditService(),
+  );
+  const config = await treasuryConfig.load();
+  if (!config) {
+    throw new Error(
+      "Treasury not configured. Set via Admin → Treasury Settings before running POC.",
+    );
+  }
+
   const builder = new TransactionBuilderService(tronRpc);
 
   console.log("Step 1: Validate treasury config on-chain...");

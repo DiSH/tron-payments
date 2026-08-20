@@ -2,7 +2,7 @@ import { Link, Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 
 export function Layout() {
-  const { user, logout } = useAuth();
+  const { user, logout, hasRole } = useAuth();
 
   return (
     <div style={{ fontFamily: "system-ui, sans-serif", minHeight: "100vh" }}>
@@ -21,6 +21,7 @@ export function Layout() {
           <Link to="/requests/new">New request</Link>
           <Link to="/signing-queue">Signing queue</Link>
           <Link to="/treasury">Treasury</Link>
+          {hasRole("admin") && <Link to="/admin/treasury">Treasury settings</Link>}
           <Link to="/audit">Audit</Link>
         </nav>
         <span style={{ color: "#666" }}>{user?.email}</span>

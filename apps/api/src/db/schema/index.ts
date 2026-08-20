@@ -100,3 +100,21 @@ export const appConfigState = pgTable("app_config_state", {
   lastValidatedAt: timestamp("last_validated_at", { withTimezone: true }),
   validationErrors: jsonb("validation_errors").$type<string[]>().default([]),
 });
+
+export type TreasurySignerRow = {
+  label: string;
+  address: string;
+  weight: number;
+  role: "signer_a" | "signer_b" | "signer_c";
+};
+
+export const treasurySettings = pgTable("treasury_settings", {
+  id: integer("id").primaryKey().default(1),
+  treasuryAddress: varchar("treasury_address", { length: 64 }).notNull(),
+  activePermissionId: integer("active_permission_id").notNull(),
+  activePermissionName: varchar("active_permission_name", { length: 255 }).notNull(),
+  threshold: integer("threshold").notNull(),
+  signers: jsonb("signers").$type<TreasurySignerRow[]>().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedBy: uuid("updated_by").references(() => users.id),
+});

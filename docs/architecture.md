@@ -146,10 +146,11 @@ flowchart TB
 ```text
 src/
 ├── server.ts              # Fastify bootstrap
-├── config/                # Env validation, treasury config
+├── config/                # Env validation, policy config (USDT/limits)
 ├── routes/
 │   ├── auth.ts
 │   ├── config.ts
+│   ├── admin-treasury-config.ts
 │   ├── payment-requests.ts
 │   ├── signatures.ts
 │   ├── broadcast.ts
@@ -160,7 +161,7 @@ src/
 │   ├── payment-request.service.ts
 │   ├── transaction-builder.service.ts
 │   ├── signature-verifier.service.ts
-│   ├── permission-verifier.service.ts
+│   ├── treasury-config.service.ts
 │   ├── broadcast.service.ts
 │   ├── audit.service.ts
 │   └── tron-rpc.service.ts
@@ -181,6 +182,7 @@ src/
 │   ├── PaymentRequestDetail.tsx
 │   ├── SigningQueue.tsx
 │   ├── TreasuryHealth.tsx
+│   ├── AdminTreasuryConfig.tsx
 │   └── AuditLog.tsx
 ├── components/
 ├── hooks/
@@ -218,11 +220,26 @@ src/
 
 ## C4 — Domain Flows
 
+### Treasury configuration (admin)
+
+```text
+Admin → Web UI /admin/treasury
+  → GET /api/admin/treasury-config/discover?address=T...
+  → API reads account.active_permission from TRON RPC
+  → Admin selects Active Permission and maps keys → Signer A/B/C
+  → PUT /api/admin/treasury-config
+  → API re-reads chain, validates keys/weights/TriggerSmartContract
+  → Upsert treasury_settings + app_config_state
+  → AuditEvent: TREASURY_CONFIG_UPDATED
+  → Hot-reload in-memory AppContext.config
+```
+
 ### Payment Request Creation
 
 ```text
 Requester → Web UI form
   → POST /api/payment-requests
+  → API requires configValid (treasury configured + on-chain match)
   → API validates address, amount, policy
   → API reads on-chain USDT balance + permissions
   → TransactionBuilder creates USDT transfer tx
@@ -269,6 +286,10 @@ POST   /api/auth/login
 GET    /api/me
 
 GET    /api/config/public
+GET    /api/admin/treasury-config
+GET    /api/admin/treasury-config/discover
+PUT    /api/admin/treasury-config
+POST   /api/admin/treasury-config/validate
 GET    /api/treasury/health
 GET    /api/treasury/permissions
 GET    /api/treasury/balances
@@ -301,6 +322,7 @@ GET    /health/tron-rpc
 | Feature | Frontend | Backend | Shared | DB |
 |---|---|---|---|---|
 | New page | `apps/web/src/pages/` | — | — | — |
+| Admin treasury config | `AdminTreasuryConfigPage.tsx` | `treasury-config.service.ts` + admin routes | — | `treasury_settings`, `app_config_state` |
 | API endpoint | — | `apps/api/src/routes/` | — | migration if needed |
 | Business logic | `apps/web/src/services/` | `apps/api/src/services/` | `packages/shared/` | — |
 | TRON encoding | — | uses shared | `packages/shared/src/tron/` | — |

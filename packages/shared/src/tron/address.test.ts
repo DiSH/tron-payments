@@ -3,6 +3,8 @@ import {
   addressesEqual,
   isBlockedRecipient,
   isValidTronAddress,
+  toBase58TronAddress,
+  tronBase58ToHex,
 } from "./address.js";
 
 describe("TRON address validation", () => {
@@ -18,6 +20,13 @@ describe("TRON address validation", () => {
   it("compares addresses case-insensitively by hex", () => {
     const a = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t";
     expect(addressesEqual(a, a)).toBe(true);
+  });
+
+  it("compares base58 with on-chain hex form", () => {
+    const a = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t";
+    const hex = tronBase58ToHex(a);
+    expect(addressesEqual(a, hex)).toBe(true);
+    expect(toBase58TronAddress(hex)).toBe(a);
   });
 
   it("detects blocked recipients", () => {

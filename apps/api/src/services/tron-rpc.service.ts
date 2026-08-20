@@ -44,6 +44,10 @@ export class TronRpcService {
     return this.tronWeb.trx.getTransactionInfo(txId);
   }
 
+  async probeRpc(): Promise<void> {
+    await this.tronWeb.trx.getNodeInfo();
+  }
+
   async getTrc20Balance(contractAddress: string, ownerAddress: string) {
     this.tronWeb.setAddress(ownerAddress);
     const contract = await this.tronWeb.contract().at(contractAddress);
@@ -63,6 +67,18 @@ export class TronRpcService {
     try {
       const account = await this.getAccount(config.treasuryAddress);
       treasuryExists = Boolean(account?.address);
+
+      if (!treasuryExists) {
+        errors.push(`Treasury address not found on-chain: ${config.treasuryAddress}`);
+        return {
+          valid: false,
+          errors,
+          warnings,
+          treasuryExists,
+          permissionMatched,
+          usdtContractMatched,
+        };
+      }
 
       const activePermissions = account.active_permission ?? [];
       const permission = activePermissions.find(
@@ -96,11 +112,7 @@ export class TronRpcService {
           }
         }
 
-        const operations: string[] = permission.operations ?? [];
-        const allowsTrigger = operations.some((op) =>
-          op.toLowerCase().includes("trigger"),
-        );
-        if (!allowsTrigger) {
+        if (!permissionAllowsTriggerSmartContract(permission.operations)) {
           errors.push("Active permission does not allow TriggerSmartContract");
         }
       }
@@ -136,4 +148,26 @@ export function createTronRpcService(
   apiKey?: string,
 ): TronRpcService {
   return new TronRpcService(rpcUrl, apiKey);
+}
+
+/** TriggerSmartContract = contract type 31 in TRON permission bitmask. */
+export function permissionAllowsTriggerSmartContract(
+  operations: unknown,
+): boolean {
+  if (operations == null) return false;
+  const values = Array.isArray(operations) ? operations : [operations];
+  return values.some((op) => {
+    const s = String(op).toLowerCase();
+    if (s.includes("trigger")) return true;
+    const hex = s.startsWith("0x") ? s.slice(2) : s;
+    if (!/^[0-9a-f]+$/.test(hex) || hex.length < 2) return false;
+    try {
+      const padded = hex.padEnd(64, "0").slice(0, 64);
+      const buf = Buffer.from(padded, "hex");
+      const bitIndex = 31;
+      return (buf[Math.floor(bitIndex / 8)] & (1 << (bitIndex % 8))) !== 0;
+    } catch {
+      return false;
+    }
+  });
 }

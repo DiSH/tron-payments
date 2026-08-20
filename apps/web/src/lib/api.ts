@@ -7,6 +7,41 @@ export interface AuthUser {
   signerAddress: string | null;
 }
 
+export interface DiscoveredPermissionKey {
+  address: string;
+  weight: number;
+}
+
+export interface DiscoveredPermission {
+  id: number;
+  name: string;
+  threshold: number;
+  keys: DiscoveredPermissionKey[];
+  operations: string[];
+  allowsTriggerSmartContract: boolean;
+}
+
+export interface TreasuryConfigResponse {
+  configured: boolean;
+  configValid: boolean;
+  validationErrors: string[];
+  lastValidatedAt: string | null;
+  config: {
+    treasuryAddress: string;
+    activePermissionId: number;
+    activePermissionName: string;
+    threshold: number;
+    signers: Array<{
+      role: "signer_a" | "signer_b" | "signer_c";
+      label: string;
+      address: string;
+      weight: number;
+    }>;
+    network: string;
+    usdtContractAddress: string;
+  } | null;
+}
+
 function authHeaders(): HeadersInit {
   const token = localStorage.getItem("auth_token");
   return token
@@ -21,7 +56,11 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   });
   const body = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(body.error ?? `Request failed (${response.status})`);
+    const detail =
+      Array.isArray(body.details) && body.details.length > 0
+        ? `: ${body.details.join("; ")}`
+        : "";
+    throw new Error((body.error ?? `Request failed (${response.status})`) + detail);
   }
   return body as T;
 }
@@ -38,6 +77,55 @@ export const api = {
   },
   publicConfig() {
     return apiFetch<Record<string, unknown>>("/api/config/public");
+  },
+  adminTreasuryConfig() {
+    return apiFetch<TreasuryConfigResponse>("/api/admin/treasury-config");
+  },
+  discoverTreasury(address: string) {
+    return apiFetch<{
+      treasuryAddress: string;
+      treasuryExists: boolean;
+      activePermissions: DiscoveredPermission[];
+    }>(
+      `/api/admin/treasury-config/discover?address=${encodeURIComponent(address)}`,
+    );
+  },
+  saveTreasuryConfig(input: {
+    treasuryAddress: string;
+    activePermissionId: number;
+    signers: Array<{
+      role: "signer_a" | "signer_b" | "signer_c";
+      label: string;
+      address: string;
+    }>;
+  }) {
+    return apiFetch<{
+      configured: boolean;
+      configValid: boolean;
+      validationErrors: string[];
+      warnings: string[];
+      config: {
+        treasuryAddress: string;
+        activePermissionId: number;
+        activePermissionName: string;
+        threshold: number;
+        signers: Array<{
+          role: "signer_a" | "signer_b" | "signer_c";
+          label: string;
+          address: string;
+          weight: number;
+        }>;
+      };
+    }>("/api/admin/treasury-config", {
+      method: "PUT",
+      body: JSON.stringify(input),
+    });
+  },
+  validateTreasuryConfig() {
+    return apiFetch<{
+      configured: boolean;
+      validation: Record<string, unknown>;
+    }>("/api/admin/treasury-config/validate", { method: "POST" });
   },
   treasuryHealth() {
     return apiFetch<Record<string, unknown>>("/api/treasury/health");

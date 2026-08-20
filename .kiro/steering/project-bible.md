@@ -358,21 +358,26 @@ Implementation lives in `packages/shared`. Must have unit tests for determinism.
 
 ## 9. Configuration
 
-All critical parameters are server-side, read-only in UI. See `.env.example`.
+Deployment env (`.env`) holds infrastructure and payment policy: network, TRON RPC, USDT contract, limits, DB, auth secrets.
+
+**Treasury address, Active Permission ID, threshold, and signer A/B/C addresses are not in `.env`.** They are configured by an Admin in the web UI (`/admin/treasury`), stored in PostgreSQL (`treasury_settings`), and validated against on-chain account permissions. On-chain multisig itself is set up outside the app (e.g. TronLink).
 
 ### 9.1 Startup Validation
 
-On every backend start (and before each new request/broadcast):
+On every backend start (and after admin save / before each new request/broadcast):
 
+- If treasury is not configured → API starts, but create/broadcast are blocked; admin is prompted to configure
 - Treasury address exists on-chain
-- Active Permission ID exists with threshold = 2
+- Active Permission ID exists with threshold matching the stored config
 - Signer keys/weights match config A/B/C
 - Active Permission allows `TriggerSmartContract`
-- USDT contract address matches expected
+- USDT contract address matches expected (policy from env)
 - Network is mainnet (in production)
 - TRX balance sufficient (or warn)
 
 **Mismatch → block** new requests and broadcast; show critical error to admin/auditor.
+
+`devbox run validate:config` exits 0 when treasury is not yet configured; otherwise validates against chain and exits 1 on failure.
 
 ---
 
@@ -436,7 +441,8 @@ POC artifacts: `scripts/ledger-poc/` or `docs/ledger-poc-report.md`.
 3. **Request Detail** — full summary, signatures, weight, audit timeline, role-based actions
 4. **Signing Queue** — pending requests sorted by expiration
 5. **Treasury Health** — on-chain permissions, balances, RPC status
-6. **Audit** — filters, CSV export
+6. **Admin → Treasury Settings** — discover on-chain Active Permission, map keys to Signer A/B/C, save to DB
+7. **Audit** — filters, CSV export
 
 ### 12.2 UX Rules
 
