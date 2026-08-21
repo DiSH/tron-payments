@@ -5,7 +5,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { api, type AuthUser } from "./api";
+import { api, type AuthUser } from "../lib/api";
 
 interface AuthContextValue {
   user: AuthUser | null;

@@ -14,6 +14,24 @@ export function PaymentRequestDetailPage() {
 
   useEffect(() => {
     if (!id) return;
+    // #region agent log
+    fetch("http://127.0.0.1:7262/ingest/ba8afa04-5708-4b10-a05d-288074df76c6", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Debug-Session-Id": "773906",
+      },
+      body: JSON.stringify({
+        sessionId: "773906",
+        runId: "post-fix",
+        hypothesisId: "C",
+        location: "PaymentRequestDetailPage.tsx:useEffect",
+        message: "loading payment request with narrowed id",
+        data: { id },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
     Promise.all([api.getPaymentRequest(id), api.getSignWeight(id).catch(() => null)])
       .then(([req, w]) => {
         setRecord(req);
@@ -23,6 +41,8 @@ export function PaymentRequestDetailPage() {
   }, [id]);
 
   if (!id) return null;
+  // Narrow for nested handlers: closures do not inherit useParams narrowing.
+  const paymentRequestId: string = id;
   if (error) return <p style={{ color: "crimson" }}>{error}</p>;
   if (!record) return <p>Loading…</p>;
 
@@ -36,7 +56,7 @@ export function PaymentRequestDetailPage() {
     }
     setError(null);
     try {
-      const session = await api.createSigningSession(id);
+      const session = await api.createSigningSession(paymentRequestId);
       const authToken = localStorage.getItem("auth_token");
       const url = new URL(session.signerClientUrl);
       url.searchParams.set("authToken", authToken ?? "");
@@ -51,9 +71,9 @@ export function PaymentRequestDetailPage() {
   async function handleBroadcast() {
     if (!window.confirm("Broadcast this payment to TRON mainnet?")) return;
     try {
-      await api.broadcast(id);
+      await api.broadcast(paymentRequestId);
       setMessage("Broadcast submitted");
-      const refreshed = await api.getPaymentRequest(id);
+      const refreshed = await api.getPaymentRequest(paymentRequestId);
       setRecord(refreshed);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));

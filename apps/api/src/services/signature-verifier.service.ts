@@ -1,4 +1,5 @@
 import { addressesEqual } from "@tron-payments/shared";
+import type { Types } from "tronweb";
 import type { TronRpcService } from "./tron-rpc.service.js";
 
 export interface SignatureVerificationResult {
@@ -60,7 +61,12 @@ export class SignatureVerifierService {
 
     let recoveredAddress = "";
     try {
-      recoveredAddress = await tronWeb.trx.ecRecover(transaction);
+      const recovered = tronWeb.trx.ecRecover(
+        transaction as unknown as Types.SignedTransaction,
+      );
+      recoveredAddress = Array.isArray(recovered)
+        ? (recovered[recovered.length - 1] ?? "")
+        : recovered;
     } catch {
       return {
         valid: false,

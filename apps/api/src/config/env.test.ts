@@ -21,6 +21,7 @@ const env = {
   JWT_SECRET: "test-secret-at-least-16",
   SESSION_SECRET: "test-session-at-least",
   LOG_LEVEL: "info",
+  RECIPIENT_ALLOWLIST_ENABLED: false,
 } as AppEnv;
 
 describe("env policy + treasury merge", () => {

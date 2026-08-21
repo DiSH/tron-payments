@@ -104,7 +104,10 @@ export class TransactionBuilderService {
       );
     }
 
-    const transaction = trigger.transaction as Record<string, unknown> & {
+    const transaction = trigger.transaction as unknown as Record<
+      string,
+      unknown
+    > & {
       txID?: string;
       raw_data?: { expiration?: number };
     };
@@ -115,11 +118,8 @@ export class TransactionBuilderService {
 
     const txPb = tronWeb.utils.transaction.txJsonToPb(transaction);
     const rawDataHex = Buffer.from(txPb.getRawData().serializeBinary()).toString("hex");
-    const txId =
-      transaction.txID ??
-      tronWeb.utils.bytes.byteArray2hexStr(
-        tronWeb.utils.transaction.txPbToTxID(txPb),
-      );
+    // txPbToTxID already returns a hex string in TronWeb 6.x (not BytesLike).
+    const txId = transaction.txID ?? tronWeb.utils.transaction.txPbToTxID(txPb);
 
     return {
       digest,

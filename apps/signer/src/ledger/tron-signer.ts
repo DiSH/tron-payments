@@ -1,6 +1,6 @@
 import TransportNodeHid from "@ledgerhq/hw-transport-node-hid";
 import Trx from "@ledgerhq/hw-app-trx";
-import { TronWeb } from "tronweb";
+import { TronWeb, Types } from "tronweb";
 import { addressesEqual } from "@tron-payments/shared";
 
 export class LedgerDeviceError extends Error {
@@ -77,5 +77,10 @@ export function recoverSignerFromSignature(
   transaction: Record<string, unknown>,
 ): string {
   const tronWeb = new TronWeb({ fullHost: "https://api.trongrid.io" });
-  return tronWeb.trx.ecRecover(transaction);
+  const recovered = tronWeb.trx.ecRecover(
+    transaction as unknown as Types.SignedTransaction,
+  );
+  return Array.isArray(recovered)
+    ? (recovered[recovered.length - 1] ?? "")
+    : recovered;
 }

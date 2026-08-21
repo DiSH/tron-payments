@@ -1,4 +1,4 @@
-import { TronWeb } from "tronweb";
+import { TronWeb, Types } from "tronweb";
 import {
   addressesEqual,
   type TreasuryConfig,
@@ -33,11 +33,15 @@ export class TronRpcService {
   }
 
   async getSignWeight(transaction: Record<string, unknown>) {
-    return this.tronWeb.trx.getSignWeight(transaction);
+    return this.tronWeb.trx.getSignWeight(
+      transaction as unknown as Types.Transaction,
+    );
   }
 
   async broadcastTransaction(transaction: Record<string, unknown>) {
-    return this.tronWeb.trx.sendRawTransaction(transaction);
+    return this.tronWeb.trx.sendRawTransaction(
+      transaction as unknown as Types.SignedTransaction,
+    );
   }
 
   async getTransactionInfo(txId: string) {
