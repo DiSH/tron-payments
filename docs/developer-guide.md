@@ -5,7 +5,7 @@
 ## Prerequisites
 
 - [devbox](https://www.jetify.com/devbox)
-- Docker (for PostgreSQL)
+- Docker (Compose for Postgres, API, and Web)
 - Node 22 (provided by devbox)
 
 ## Setup
@@ -14,11 +14,37 @@
 devbox shell
 devbox run install
 cp .env.example .env
-devbox run docker:up
-devbox run db:migrate
-devbox run seed:users -w @tron-payments/api   # dev users
-devbox run dev
+devbox run docker:up          # Postgres + API + Web; API runs migrations
+devbox run seed:users         # optional dev users (from host, DATABASE_URL=localhost)
+devbox run dev:signer         # Ledger client on the host — not in Docker
 ```
+
+`devbox run dev` is the same stack as `docker:up`, but attached (logs in the foreground).
+
+Host fallbacks if you are not using the API/Web containers: `devbox run dev:api` and `devbox run dev:web` (start Postgres with `docker compose up -d postgres` first).
+
+## Docker
+
+| File | Purpose |
+|---|---|
+| [`docker-compose.yml`](../docker-compose.yml) | Local: Postgres + API (`tsx watch`) + Web (Vite), bind-mounted source |
+| [`docker-compose.prod.yml`](../docker-compose.prod.yml) | Production: API + nginx. **No Postgres** — use `DATABASE_URL` |
+| [`apps/api/Dockerfile`](../apps/api/Dockerfile) | Targets `development` / `production` |
+| [`apps/web/Dockerfile`](../apps/web/Dockerfile) | Targets `development` / `production` (nginx) |
+
+Local Compose overrides `DATABASE_URL` to host `postgres`. `POSTGRES_*` in `.env` only creates the local database container.
+
+After changing npm dependencies, rebuild images and drop the node_modules volumes (Postgres data volume is separate):
+
+```bash
+docker compose build api web
+docker volume rm tron-payments_api_node_modules tron-payments_web_node_modules
+docker compose up -d
+```
+
+Production migrate + start: see [README](../README.md#production). Set `VITE_API_BASE_URL` to the **browser-facing** API URL before building the web image. Set `CORS_ORIGIN` to the web origin.
+
+The signer client is never containerized (Ledger USB/HID).
 
 ## Monorepo
 

@@ -24,7 +24,7 @@
     ],
     "scripts": {
       "install": "npm install",
-      "dev": "docker compose up -d postgres && npm run dev --workspaces --if-present",
+      "dev": "docker compose up",
       "dev:api": "npm run dev -w @tron-payments/api",
       "dev:web": "npm run dev -w @tron-payments/web",
       "dev:signer": "npm run dev -w @tron-payments/signer",
@@ -37,7 +37,9 @@
       "validate:config": "npm run validate:config -w @tron-payments/api",
       "docker:up": "docker compose up -d",
       "docker:down": "docker compose down",
-      "docker:logs": "docker compose logs -f"
+      "docker:logs": "docker compose logs -f",
+      "docker:prod:migrate": "docker compose -f docker-compose.prod.yml run --rm api npm run db:migrate",
+      "docker:prod:up": "docker compose -f docker-compose.prod.yml up -d --build"
     }
   }
 }

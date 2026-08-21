@@ -129,6 +129,15 @@ flowchart TB
 | **PostgreSQL** | Postgres 16 | Payment requests, signatures, audit events, job queue |
 | **Broadcast Worker** | Node process (in API or separate) | Idempotent broadcast, confirmation polling |
 
+### Deployment topology
+
+| Environment | Compose file | What runs |
+|---|---|---|
+| Local | `docker-compose.yml` | Postgres 16 + API (`tsx watch`) + Web (Vite). Source bind-mounted for hot reload. |
+| Production | `docker-compose.prod.yml` | API + nginx serving the SPA. PostgreSQL is **external**; the API connects via `DATABASE_URL`. |
+
+Images live in `apps/api/Dockerfile` and `apps/web/Dockerfile` (targets `development` / `production`). The signer client is **never containerized** — Ledger USB/HID stays on the signer machine (`devbox run dev:signer`).
+
 ### Forbidden
 
 - Backend or Web UI accessing Ledger hardware

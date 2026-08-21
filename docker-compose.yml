@@ -11,33 +11,49 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-tron_payments}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-tron_payments} -d ${POSTGRES_DB:-tron_payments}"]
       interval: 5s
       timeout: 5s
       retries: 5
 
-  # API and Web are started via devbox/npm for hot reload during development.
-  # Uncomment for containerized staging-like runs:
-  #
-  # api:
-  #   build:
-  #     context: .
-  #     dockerfile: apps/api/Dockerfile
-  #   env_file: .env
-  #   ports:
-  #     - "${API_PORT:-3000}:3000"
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
-  #
-  # web:
-  #   build:
-  #     context: .
-  #     dockerfile: apps/web/Dockerfile
-  #   ports:
-  #     - "${WEB_PORT:-5173}:5173"
-  #   depends_on:
-  #     - api
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: development
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-tron_payments}:${POSTGRES_PASSWORD:-tron_payments_dev}@postgres:5432/${POSTGRES_DB:-tron_payments}
+      RUN_MIGRATIONS: "true"
+      API_PORT: "3000"
+    ports:
+      - "${API_PORT:-3000}:3000"
+    volumes:
+      - ./apps/api:/app/apps/api
+      - ./packages/shared:/app/packages/shared
+      - api_node_modules:/app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      target: development
+    environment:
+      VITE_API_BASE_URL: http://localhost:3000
+      CHOKIDAR_USEPOLLING: "true"
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./apps/web:/app/apps/web
+      - ./packages/shared:/app/packages/shared
+      - web_node_modules:/app/node_modules
+    depends_on:
+      - api
 
 volumes:
   postgres_data:
+  api_node_modules:
+  web_node_modules:

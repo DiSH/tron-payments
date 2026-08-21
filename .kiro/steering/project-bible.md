@@ -144,8 +144,9 @@ All development runs inside **devbox**, consistent with other XPN projects (e.g.
 ```bash
 devbox shell          # enter environment
 devbox run install    # npm install (all workspaces)
-devbox run docker:up  # start PostgreSQL
-devbox run dev        # start all dev servers
+devbox run docker:up  # Postgres + API + Web (hot reload)
+devbox run dev        # same stack, attached logs
+devbox run dev:signer # Ledger client on the host (never in Docker)
 ```
 
 Canonical commands are in `devbox.json` shell scripts and root `package.json`. Agents should prefer `devbox run <script>` over ad-hoc global tool versions.

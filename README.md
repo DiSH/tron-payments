@@ -10,28 +10,38 @@ Requires [devbox](https://www.jetify.com/devbox) and Docker.
 # Enter dev environment
 devbox shell
 
-# Install dependencies
+# Install dependencies (host; also used by tests / signer)
 devbox run install
 
 # Copy and configure environment
 cp .env.example .env
-# Edit .env with treasury address, signers, TRON RPC URL
+# Edit .env with TRON RPC URL and auth secrets
 
-# Start PostgreSQL
+# Start Postgres + API + Web (hot reload). Migrations run on API start.
 devbox run docker:up
-
-# Run database migrations (once API is implemented)
-devbox run db:migrate
-
-# Start all dev servers
-devbox run dev
+# or foreground: devbox run dev
 ```
+
+Signer stays on the host (Ledger USB): `devbox run dev:signer`.
 
 | Service | URL |
 |---|---|
 | Web UI | http://localhost:5173 |
 | API | http://localhost:3000 |
 | Signer client | http://localhost:3847 |
+
+## Production
+
+PostgreSQL is **not** in the production Compose file. Set `DATABASE_URL` (and other secrets) in `.env`, bake the browser API URL into the SPA, migrate, then start:
+
+```bash
+# VITE_API_BASE_URL is the URL the browser uses to reach the API
+export VITE_API_BASE_URL=https://api.example.com
+docker compose -f docker-compose.prod.yml run --rm api npm run db:migrate
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+Or: `devbox run docker:prod:migrate` then `devbox run docker:prod:up`.
 
 ## Project Structure
 

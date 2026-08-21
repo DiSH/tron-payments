@@ -53,13 +53,14 @@ Read authoritative docs **before** making changes:
 
 - Shell: `devbox shell`
 - Install: `devbox run install`
-- Dev (all): `devbox run dev`
-- Dev (single): `devbox run dev:api` / `dev:web` / `dev:signer`
+- Dev (all): `devbox run dev` (Compose: Postgres + API + Web)
+- Dev (single): `devbox run dev:api` / `dev:web` / `dev:signer` (host fallbacks; signer is host-only)
 - Test: `devbox run test`
 - Lint: `devbox run lint`
 - DB migrate: `devbox run db:migrate`
 - Config validate: `devbox run validate:config` (DB treasury config vs chain; exit 0 if not configured)
 - Docker: `devbox run docker:up` / `docker:down`
+- Docker prod: `devbox run docker:prod:migrate` / `docker:prod:up` (API + nginx; Postgres is external)
 
 Environment: copy `.env.example` → `.env`. Never commit `.env`.
 

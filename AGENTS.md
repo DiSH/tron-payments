@@ -26,13 +26,13 @@ Internal tool for remote **2-of-3 multisig USDT TRC-20 payments** from a corpora
 
 ### Standard commands
 
-**Local environment:** Devbox + Docker Compose (PostgreSQL). All commands run inside devbox.
+**Local environment:** Devbox + Docker Compose (Postgres, API, Web). Signer runs on the host. All commands run inside devbox unless noted.
 
 ```bash
 devbox shell              # enter dev environment
 devbox run install        # npm install (all workspaces)
-devbox run docker:up      # start PostgreSQL
-devbox run dev            # start api + web + signer dev servers
+cp .env.example .env      # fill in RPC / auth secrets
+devbox run docker:up      # Postgres + API + Web (hot reload)
 devbox run test           # run all workspace tests
 devbox run validate:config # validate DB treasury config against TRON RPC (exit 0 if not configured)
 ```
@@ -41,14 +41,18 @@ Runtime: Node 22 + npm (canonical package manager; `packageManager` is `npm@10.9
 
 | Command | Description |
 |---|---|
-| `devbox run dev:api` | API only (port 3000) |
-| `devbox run dev:web` | Web only (port 5173) |
-| `devbox run dev:signer` | Signer client (port 3847) |
-| `devbox run db:migrate` | Run Drizzle migrations |
+| `devbox run dev` | Foreground `docker compose up` (Postgres + API + Web) |
+| `devbox run dev:api` | API on the host (port 3000) — fallback without containers |
+| `devbox run dev:web` | Web on the host (port 5173) — fallback without containers |
+| `devbox run dev:signer` | Signer client on the host (port 3847); never containerized |
+| `devbox run db:migrate` | Run Drizzle migrations against `DATABASE_URL` (host) |
 | `devbox run lint` | Lint all workspaces |
 | `devbox run build` | Build all workspaces |
+| `devbox run docker:down` | Stop local Compose stack |
+| `devbox run docker:prod:migrate` | Run migrations in the production API image |
+| `devbox run docker:prod:up` | Build and start production Compose (API + nginx, no Postgres) |
 
-Copy `.env.example` to `.env` and fill in RPC / DB / auth. Configure treasury address and signers via Admin → Treasury Settings after first login.
+Copy `.env.example` to `.env` and fill in RPC / DB / auth. Local Compose overrides `DATABASE_URL` to the `postgres` service. Production Compose has no database — point `DATABASE_URL` at your Postgres. Configure treasury address and signers via Admin → Treasury Settings after first login.
 
 ### Security rules (non-negotiable)
 
