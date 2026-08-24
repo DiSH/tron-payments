@@ -1,8 +1,19 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
-import { ROLES, type Role } from "@tron-payments/shared";
 import { api, type AdminUser } from "../lib/api";
 import { useAuth } from "../contexts/AuthContext";
+
+const ROLES = [
+  "requester",
+  "signer_a",
+  "signer_b",
+  "signer_c",
+  "executor",
+  "admin",
+  "auditor",
+] as const;
+
+type Role = (typeof ROLES)[number];
 
 const ROLE_LABELS: Record<Role, string> = {
   requester: "Requester",

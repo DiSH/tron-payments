@@ -1,4 +1,27 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("../db/client.js", () => {
+  const chain: Record<string, ReturnType<typeof vi.fn>> = {};
+  const handler = () => chain;
+  for (const key of [
+    "select",
+    "from",
+    "where",
+    "limit",
+    "insert",
+    "values",
+    "update",
+    "set",
+    "returning",
+    "orderBy",
+  ]) {
+    chain[key] = vi.fn(handler);
+  }
+  chain.limit = vi.fn().mockResolvedValue([]);
+  chain.returning = vi.fn().mockResolvedValue([]);
+  return { db: chain };
+});
+
 import { isTokenStale } from "./auth.service.js";
 import {
   MIN_PASSWORD_LENGTH,

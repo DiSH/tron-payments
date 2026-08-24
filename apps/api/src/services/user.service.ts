@@ -339,17 +339,18 @@ export class UserService {
     excludeUserId?: string,
   ): Promise<void> {
     if (!address) return;
-    const conditions = [
-      eq(users.signerAddress, address),
-      isNull(users.disabledAt),
-    ];
-    if (excludeUserId) {
-      conditions.push(ne(users.id, excludeUserId));
-    }
     const [existing] = await db
       .select({ id: users.id })
       .from(users)
-      .where(and(...conditions))
+      .where(
+        excludeUserId
+          ? and(
+              eq(users.signerAddress, address),
+              isNull(users.disabledAt),
+              ne(users.id, excludeUserId),
+            )
+          : and(eq(users.signerAddress, address), isNull(users.disabledAt)),
+      )
       .limit(1);
     if (existing) {
       throw new UserServiceError("Signer address already assigned", 409);
