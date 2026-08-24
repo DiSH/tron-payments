@@ -32,16 +32,21 @@ Signer stays on the host (Ledger USB): `devbox run dev:signer`.
 
 ## Production
 
-PostgreSQL is **not** in the production Compose file. Set `DATABASE_URL` (and other secrets) in `.env`, bake the browser API URL into the SPA, migrate, then start:
+PostgreSQL is **not** in the production Compose file. Point `DATABASE_URL` (and other secrets) at `.env`. The SPA is served from `https://fboardpagec.com`; nginx reverse-proxies `/api` and `/health` so the browser uses the same origin.
+
+1. DNS A record for `fboardpagec.com` → this host; ports 80 and 443 open.
+2. Set `CERTBOT_EMAIL` in `.env`. Production Compose sets `CORS_ORIGIN=https://fboardpagec.com` and bakes `VITE_API_BASE_URL=https://fboardpagec.com`.
+3. Issue TLS, migrate, then start:
 
 ```bash
-# VITE_API_BASE_URL is the URL the browser uses to reach the API
-export VITE_API_BASE_URL=https://api.example.com
+bash scripts/init-letsencrypt.sh
 docker compose -f docker-compose.prod.yml run --rm api npm run db:migrate
 docker compose -f docker-compose.prod.yml up -d --build
 ```
 
-Or: `devbox run docker:prod:migrate` then `devbox run docker:prod:up`.
+Or: `devbox run docker:prod:cert`, then `devbox run docker:prod:migrate`, then `devbox run docker:prod:up`.
+
+Local signer against production: `API_BASE_URL=https://fboardpagec.com`.
 
 ## Project Structure
 

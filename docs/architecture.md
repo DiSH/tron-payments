@@ -2,7 +2,7 @@
 
 **Status:** living document  
 **Owner:** Finance / Engineering  
-**Last reviewed:** 2026-08-19
+**Last reviewed:** 2026-08-24
 
 Canonical C4 architecture reference for the TRON multisig 2-of-3 USDT treasury MVP. AI agents and human contributors must read this before changing system boundaries, adding containers, or introducing new cross-cutting flows.
 
@@ -59,6 +59,7 @@ flowchart TB
     Scan[TronScan_Explorer]
     OIDC[Corporate_OIDC_SSO]
     Ledger[Ledger_Hardware_Wallets]
+    LE[LetsEncrypt]
   end
 
   Req --> SYS
@@ -71,6 +72,7 @@ flowchart TB
 
   SYS --> TRON
   SYS --> OIDC
+  SYS --> LE
   SA --> Ledger
   SB --> Ledger
   SC --> Ledger
@@ -85,6 +87,7 @@ flowchart TB
 | **TronScan** | Read-only explorer links | Post-broadcast confirmation URLs |
 | **Corporate OIDC** | Authentication (or email+TOTP for MVP) | No seed-based auth |
 | **Ledger devices** | Signing hardware | Accessed only by local signer client via USB/HID |
+| **Let's Encrypt** | TLS certificates (production) | HTTP-01 via nginx webroot; certbot sidecar in production Compose |
 
 ---
 
@@ -102,6 +105,7 @@ flowchart TB
   end
 
   subgraph server [Server — Docker Compose]
+    NGINX[nginx_TLS]
     API[API_Fastify_TypeScript]
     PG[(PostgreSQL_16)]
     WORK[BroadcastWorker]
@@ -109,8 +113,9 @@ flowchart TB
 
   TRON[TRON_RPC]
 
-  WEB -->|HTTPS_JSON| API
-  SIGN -->|HTTPS_JSON| API
+  WEB -->|HTTPS_same_origin| NGINX
+  SIGN -->|HTTPS_JSON| NGINX
+  NGINX -->|"/api /health"| API
   SIGN -->|USB_HID| LED
   WEB -->|deep_link_or_localhost| SIGN
   API --> PG
@@ -123,7 +128,7 @@ flowchart TB
 
 | Container | Technology | Responsibility |
 |---|---|---|
-| **Web SPA** | React 18, TypeScript, Vite | Dashboard, request forms, signing queue, audit views |
+| **Web SPA** | React 18, TypeScript, Vite | Dashboard, request forms, signing queue, audit views. Production image is nginx serving the SPA and reverse-proxying `/api` and `/health`. |
 | **API Server** | Fastify, TypeScript, Drizzle | Auth, RBAC, request lifecycle, tx builder, signature verifier, config validation |
 | **Signer Client** | Node/Electron or CLI | Local Ledger interaction, payload re-validation, signature submission |
 | **PostgreSQL** | Postgres 16 | Payment requests, signatures, audit events, job queue |
@@ -134,7 +139,7 @@ flowchart TB
 | Environment | Compose file | What runs |
 |---|---|---|
 | Local | `docker-compose.yml` | Postgres 16 + API (`tsx watch`) + Web (Vite). Source bind-mounted for hot reload. |
-| Production | `docker-compose.prod.yml` | API + nginx serving the SPA. PostgreSQL is **external**; the API connects via `DATABASE_URL`. |
+| Production | `docker-compose.prod.yml` | API + nginx on `https://fboardpagec.com` (TLS via Let's Encrypt). nginx serves the SPA and reverse-proxies `/api` and `/health`. API is not published on the host. PostgreSQL is **external**; the API connects via `DATABASE_URL`. Certbot is a renewal sidecar, not a C4 application container. |
 
 Images live in `apps/api/Dockerfile` and `apps/web/Dockerfile` (targets `development` / `production`). The signer client is **never containerized** — Ledger USB/HID stays on the signer machine (`devbox run dev:signer`).
 

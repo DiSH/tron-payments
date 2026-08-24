@@ -28,7 +28,7 @@ Host fallbacks if you are not using the API/Web containers: `devbox run dev:api`
 | File | Purpose |
 |---|---|
 | [`docker-compose.yml`](../docker-compose.yml) | Local: Postgres + API (`tsx watch`) + Web (Vite), bind-mounted source |
-| [`docker-compose.prod.yml`](../docker-compose.prod.yml) | Production: API + nginx. **No Postgres** — use `DATABASE_URL` |
+| [`docker-compose.prod.yml`](../docker-compose.prod.yml) | Production: API + nginx (SPA + TLS reverse proxy on `https://fboardpagec.com`). **No Postgres** — use `DATABASE_URL` |
 | [`apps/api/Dockerfile`](../apps/api/Dockerfile) | Targets `development` / `production` |
 | [`apps/web/Dockerfile`](../apps/web/Dockerfile) | Targets `development` / `production` (nginx) |
 
@@ -42,7 +42,7 @@ docker volume rm tron-payments_api_node_modules tron-payments_web_node_modules
 docker compose up -d
 ```
 
-Production migrate + start: see [README](../README.md#production). Set `VITE_API_BASE_URL` to the **browser-facing** API URL before building the web image. Set `CORS_ORIGIN` to the web origin.
+Production migrate + start: see [README](../README.md#production). First-time TLS: set `CERTBOT_EMAIL` and run `bash scripts/init-letsencrypt.sh` (or `devbox run docker:prod:cert`). nginx terminates HTTPS for `fboardpagec.com` and reverse-proxies `/api` and `/health`; the SPA is built with `VITE_API_BASE_URL=https://fboardpagec.com`. Compose sets `CORS_ORIGIN=https://fboardpagec.com`. Local signer against production: `API_BASE_URL=https://fboardpagec.com`.
 
 The signer client is never containerized (Ledger USB/HID).
 

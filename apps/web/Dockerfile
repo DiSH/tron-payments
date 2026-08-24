@@ -33,7 +33,9 @@ RUN npm run build -w @tron-payments/web
 
 FROM nginx:alpine AS production
 
+RUN mkdir -p /var/www/certbot
+
 COPY apps/web/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/apps/web/dist /usr/share/nginx/html
 
-EXPOSE 80
+EXPOSE 80 443

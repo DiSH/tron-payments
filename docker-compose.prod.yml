@@ -1,11 +1,13 @@
-# Production stack: API + nginx (static SPA). PostgreSQL is external.
+# Production stack: API + nginx (SPA + TLS reverse proxy). PostgreSQL is external.
 # DATABASE_URL and other secrets come from .env on the host.
 #
+# First-time TLS (DNS A record for fboardpagec.com must point here; ports 80/443 open):
+#   # Set CERTBOT_EMAIL in .env first
+#   bash scripts/init-letsencrypt.sh
 #   docker compose -f docker-compose.prod.yml run --rm api npm run db:migrate
 #   docker compose -f docker-compose.prod.yml up -d --build
 #
-# Bake the browser-facing API URL into the SPA at image build time:
-#   VITE_API_BASE_URL=https://api.example.com docker compose -f docker-compose.prod.yml build
+# Browser-facing origin is baked into the SPA at image build time (same-origin /api).
 services:
   api:
     build:
@@ -16,8 +18,9 @@ services:
     environment:
       NODE_ENV: production
       API_PORT: "3000"
-    ports:
-      - "${API_PORT:-3000}:3000"
+      CORS_ORIGIN: https://fboardpagec.com
+    expose:
+      - "3000"
     restart: unless-stopped
 
   web:
@@ -26,9 +29,28 @@ services:
       dockerfile: apps/web/Dockerfile
       target: production
       args:
-        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:3000}
+        VITE_API_BASE_URL: https://fboardpagec.com
     ports:
-      - "${WEB_PORT:-80}:80"
+      - "80:80"
+      - "443:443"
+    volumes:
+      - certbot_www:/var/www/certbot
+      - certbot_certs:/etc/letsencrypt
     depends_on:
       - api
     restart: unless-stopped
+    command: "/bin/sh -c 'while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g \"daemon off;\"'"
+
+  certbot:
+    image: certbot/certbot
+    volumes:
+      - certbot_www:/var/www/certbot
+      - certbot_certs:/etc/letsencrypt
+    entrypoint: /bin/sh -c "trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;"
+    depends_on:
+      - web
+    restart: unless-stopped
+
+volumes:
+  certbot_www:
+  certbot_certs:

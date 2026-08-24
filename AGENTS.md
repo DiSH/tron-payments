@@ -50,9 +50,10 @@ Runtime: Node 22 + npm (canonical package manager; `packageManager` is `npm@10.9
 | `devbox run build` | Build all workspaces |
 | `devbox run docker:down` | Stop local Compose stack |
 | `devbox run docker:prod:migrate` | Run migrations in the production API image |
-| `devbox run docker:prod:up` | Build and start production Compose (API + nginx, no Postgres) |
+| `devbox run docker:prod:cert` | Issue Let's Encrypt cert for `fboardpagec.com` (`bash scripts/init-letsencrypt.sh`) |
+| `devbox run docker:prod:up` | Build and start production Compose (API + nginx TLS, no Postgres) |
 
-Copy `.env.example` to `.env` and fill in RPC / DB / auth. Local Compose overrides `DATABASE_URL` to the `postgres` service. Production Compose has no database — point `DATABASE_URL` at your Postgres. Configure treasury address and signers via Admin → Treasury Settings after first login.
+Copy `.env.example` to `.env` and fill in RPC / DB / auth. Local Compose overrides `DATABASE_URL` to the `postgres` service. Production Compose has no database — point `DATABASE_URL` at your Postgres. Production nginx serves `https://fboardpagec.com` (set `CERTBOT_EMAIL`, then `devbox run docker:prod:cert`). Configure treasury address and signers via Admin → Treasury Settings after first login.
 
 ### Security rules (non-negotiable)
 

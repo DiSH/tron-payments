@@ -17,14 +17,15 @@ Canonical reference: **`docs/architecture.md`**. This rule is a session-level su
 | Admin | Users, config, reference data |
 | Auditor | Read-only audit access |
 
-External: TRON Mainnet RPC, TronScan, Corporate OIDC (or email+TOTP), Ledger hardware wallets.
+External: TRON Mainnet RPC, TronScan, Corporate OIDC (or email+TOTP), Ledger hardware wallets, Let's Encrypt (production TLS).
 
 ## C2 — Containers
 
 ```mermaid
 flowchart TB
-  WEB[WebSPA_React] --> API[API_Fastify]
-  SIGN[SignerClient_Local] --> API
+  WEB[WebSPA_React] --> NGINX[nginx_TLS]
+  NGINX --> API[API_Fastify]
+  SIGN[SignerClient_Local] --> NGINX
   SIGN --> LED[Ledger_USB_HID]
   WEB -->|localhost/deep_link| SIGN
   API --> PG[(PostgreSQL)]
@@ -33,7 +34,7 @@ flowchart TB
 
 | Container | Must stay |
 |---|---|
-| Web SPA | React + Vite; thin pages; API client in services/ |
+| Web SPA | React + Vite; thin pages; API client in services/. Production image: nginx (SPA + `/api` reverse proxy, TLS). |
 | API | Fastify; Drizzle; no signing capability |
 | Signer Client | Local only; Ledger via USB/HID; never on server |
 | PostgreSQL | Append-only audit; optimistic locking on requests |
