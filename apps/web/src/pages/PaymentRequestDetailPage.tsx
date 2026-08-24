@@ -14,24 +14,6 @@ export function PaymentRequestDetailPage() {
 
   useEffect(() => {
     if (!id) return;
-    // #region agent log
-    fetch("http://127.0.0.1:7262/ingest/ba8afa04-5708-4b10-a05d-288074df76c6", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Debug-Session-Id": "773906",
-      },
-      body: JSON.stringify({
-        sessionId: "773906",
-        runId: "post-fix",
-        hypothesisId: "C",
-        location: "PaymentRequestDetailPage.tsx:useEffect",
-        message: "loading payment request with narrowed id",
-        data: { id },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
     Promise.all([api.getPaymentRequest(id), api.getSignWeight(id).catch(() => null)])
       .then(([req, w]) => {
         setRecord(req);
