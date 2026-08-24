@@ -13,10 +13,19 @@ set -euo pipefail
 
 DOMAIN="fboardpagec.com"
 RSA_KEY_SIZE=4096
-COMPOSE=(docker compose -f docker-compose.prod.yml)
+COMPOSE_FILE=( -f docker-compose.prod.yml )
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
+
+if docker compose version >/dev/null 2>&1; then
+  COMPOSE=( docker compose "${COMPOSE_FILE[@]}" )
+elif command -v docker-compose >/dev/null 2>&1; then
+  COMPOSE=( docker-compose "${COMPOSE_FILE[@]}" )
+else
+  echo "docker compose or docker-compose is required." >&2
+  exit 1
+fi
 
 env_value() {
   local key="$1"
@@ -42,11 +51,6 @@ fi
 
 if [[ -z "${CERTBOT_EMAIL:-}" ]]; then
   echo "Set CERTBOT_EMAIL in .env before requesting a certificate." >&2
-  exit 1
-fi
-
-if ! docker compose version >/dev/null 2>&1; then
-  echo "docker compose is required." >&2
   exit 1
 fi
 
