@@ -15,6 +15,12 @@ export const users = pgTable("users", {
   passwordHash: text("password_hash").notNull(),
   roles: jsonb("roles").$type<string[]>().notNull().default([]),
   signerAddress: varchar("signer_address", { length: 64 }),
+  disabledAt: timestamp("disabled_at", { withTimezone: true }),
+  credentialsUpdatedAt: timestamp("credentials_updated_at", {
+    withTimezone: true,
+  })
+    .defaultNow()
+    .notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 

@@ -7,6 +7,7 @@ import {
   registerAuditRoutes,
   registerAuthRoutes,
   registerAdminTreasuryConfigRoutes,
+  registerAdminUserRoutes,
   registerConfigRoutes,
   registerHealthRoutes,
   registerPaymentRequestRoutes,
@@ -18,12 +19,14 @@ import { BroadcastService } from "./services/broadcast.service.js";
 import { PaymentRequestService } from "./services/payment-request.service.js";
 import { createTronRpcService } from "./services/tron-rpc.service.js";
 import { TreasuryConfigService } from "./services/treasury-config.service.js";
+import { UserService } from "./services/user.service.js";
 
 export async function buildApp() {
   const env = loadEnv();
   const tronRpc = createTronRpcService(env.TRON_RPC_URL, env.TRON_RPC_API_KEY);
   const audit = new AuditService();
   const auth = new AuthService(env.JWT_SECRET);
+  const userAdmin = new UserService(audit);
   const treasuryConfig = new TreasuryConfigService(env, tronRpc, audit);
   const paymentRequests = new PaymentRequestService(tronRpc, audit);
   const broadcast = new BroadcastService(tronRpc, paymentRequests, audit);
@@ -64,6 +67,7 @@ export async function buildApp() {
     validationErrors,
     auth,
     audit,
+    users: userAdmin,
     paymentRequests,
     broadcast,
     tronRpc,
@@ -85,6 +89,7 @@ export async function buildApp() {
   await registerAuthRoutes(app, ctx);
   await registerConfigRoutes(app, ctx);
   await registerAdminTreasuryConfigRoutes(app, ctx);
+  await registerAdminUserRoutes(app, ctx);
   await registerTreasuryRoutes(app, ctx);
   await registerPaymentRequestRoutes(app, ctx);
   await registerAuditRoutes(app, ctx);

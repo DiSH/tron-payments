@@ -46,6 +46,7 @@ flowchart TB
 | Domain | API | Web | Signer | Shared |
 |---|---|---|---|---|
 | Auth/RBAC | `routes/auth.ts` | login pages | token for signing session | types |
+| Users | `services/user.service.ts`, admin user routes | `pages/AdminUsersPage.tsx` | — | — |
 | Payment requests | `routes/payment-requests.ts`, `services/payment-request.service.ts` | `pages/NewPaymentRequest.tsx`, `PaymentRequestDetail.tsx` | — | state-machine |
 | Transaction build | `services/transaction-builder.service.ts` | digest preview | payload re-validation | `tron/`, `canonical/` |
 | Signatures | `routes/signatures.ts`, `services/signature-verifier.service.ts` | sign button + checkbox | `ledger/tron-signer.ts` | — |
@@ -59,6 +60,7 @@ flowchart TB
 | Domain | Flow |
 |---|---|
 | **Create request** | Web form → API validates → build USDT transfer tx → store canonical payload → AWAITING_SIGNATURES |
+| **User admin** | Admin Users page → create/update/disable/reset password → AuditEvent USER_* |
 | **Sign** | Web checkbox → signing token → local signer fetches payload → Ledger signs → API verifies ECDSA + getSignWeight |
 | **Broadcast** | Executor confirms → API re-validates all gates → broadcasttransaction → poll confirmation → CONFIRMED |
 | **Audit** | Every mutation → append AuditEvent with before/after state |

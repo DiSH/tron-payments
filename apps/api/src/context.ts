@@ -6,6 +6,7 @@ import type { PaymentRequestService } from "./services/payment-request.service.j
 import type { BroadcastService } from "./services/broadcast.service.js";
 import type { TronRpcService } from "./services/tron-rpc.service.js";
 import type { TreasuryConfigService } from "./services/treasury-config.service.js";
+import type { UserService } from "./services/user.service.js";
 
 export interface AppContext {
   env: AppEnv;
@@ -14,6 +15,7 @@ export interface AppContext {
   validationErrors: string[];
   auth: AuthService;
   audit: AuditService;
+  users: UserService;
   paymentRequests: PaymentRequestService;
   broadcast: BroadcastService;
   tronRpc: TronRpcService;

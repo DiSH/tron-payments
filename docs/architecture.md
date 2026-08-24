@@ -164,6 +164,7 @@ src/
 ├── routes/
 │   ├── auth.ts
 │   ├── config.ts
+│   ├── admin-users.ts
 │   ├── admin-treasury-config.ts
 │   ├── payment-requests.ts
 │   ├── signatures.ts
@@ -176,6 +177,7 @@ src/
 │   ├── transaction-builder.service.ts
 │   ├── signature-verifier.service.ts
 │   ├── treasury-config.service.ts
+│   ├── user.service.ts
 │   ├── broadcast.service.ts
 │   ├── audit.service.ts
 │   └── tron-rpc.service.ts
@@ -197,6 +199,7 @@ src/
 │   ├── SigningQueue.tsx
 │   ├── TreasuryHealth.tsx
 │   ├── AdminTreasuryConfig.tsx
+│   ├── AdminUsers.tsx
 │   └── AuditLog.tsx
 ├── components/
 ├── hooks/
@@ -233,6 +236,20 @@ src/
 ---
 
 ## C4 — Domain Flows
+
+### User management (admin)
+
+```text
+Admin → Web UI /admin/users
+  → GET /api/admin/users
+  → Create: POST /api/admin/users (email, password, roles, optional signerAddress)
+  → Update: PATCH /api/admin/users/:id (roles, signerAddress)
+  → Reset password: POST /api/admin/users/:id/reset-password
+  → Disable: DELETE /api/admin/users/:id (sets disabled_at; row kept for audit)
+  → API enforces admin role, last-admin and self-disable guards
+  → AuditEvent: USER_CREATED | USER_UPDATED | USER_PASSWORD_RESET | USER_DISABLED
+  → Password reset bumps credentials_updated_at; JWTs issued before that second are rejected
+```
 
 ### Treasury configuration (admin)
 
@@ -299,6 +316,12 @@ Executor → Web UI final confirmation
 POST   /api/auth/login
 GET    /api/me
 
+GET    /api/admin/users
+POST   /api/admin/users
+PATCH  /api/admin/users/:id
+DELETE /api/admin/users/:id
+POST   /api/admin/users/:id/reset-password
+
 GET    /api/config/public
 GET    /api/admin/treasury-config
 GET    /api/admin/treasury-config/discover
@@ -336,6 +359,7 @@ GET    /health/tron-rpc
 | Feature | Frontend | Backend | Shared | DB |
 |---|---|---|---|---|
 | New page | `apps/web/src/pages/` | — | — | — |
+| Admin users | `AdminUsersPage.tsx` | `user.service.ts` + admin user routes | — | `users` (`disabled_at`, `credentials_updated_at`) |
 | Admin treasury config | `AdminTreasuryConfigPage.tsx` | `treasury-config.service.ts` + admin routes | — | `treasury_settings`, `app_config_state` |
 | API endpoint | — | `apps/api/src/routes/` | — | migration if needed |
 | Business logic | `apps/web/src/services/` | `apps/api/src/services/` | `packages/shared/` | — |

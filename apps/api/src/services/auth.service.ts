@@ -12,6 +12,27 @@ export interface AuthUser {
   signerAddress: string | null;
 }
 
+export interface AuthUserRecord extends AuthUser {
+  disabledAt: Date | null;
+  credentialsUpdatedAt: Date;
+}
+
+export interface TokenPayload {
+  id: string;
+  email: string;
+  roles: Role[];
+  iat: number;
+}
+
+/** Reject JWTs issued before credentials_updated_at (second precision). */
+export function isTokenStale(
+  iat: number | undefined,
+  credentialsUpdatedAt: Date,
+): boolean {
+  if (typeof iat !== "number") return true;
+  return iat < Math.floor(credentialsUpdatedAt.getTime() / 1000);
+}
+
 export class AuthService {
   constructor(private readonly jwtSecret: string) {}
 
@@ -42,7 +63,7 @@ export class AuthService {
       .where(eq(users.email, email.toLowerCase()))
       .limit(1);
 
-    if (!user) throw new Error("Invalid credentials");
+    if (!user || user.disabledAt) throw new Error("Invalid credentials");
 
     const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) throw new Error("Invalid credentials");
@@ -57,27 +78,42 @@ export class AuthService {
     return { token, user: authUser };
   }
 
-  verifyToken(token: string): AuthUser {
+  verifyToken(token: string): TokenPayload {
     const payload = jwt.verify(token, this.jwtSecret) as {
       sub: string;
       email: string;
       roles: Role[];
+      iat?: number;
     };
+    if (typeof payload.iat !== "number") {
+      throw new Error("Invalid token");
+    }
     return {
       id: payload.sub,
       email: payload.email,
       roles: payload.roles,
-      signerAddress: null,
+      iat: payload.iat,
     };
   }
 
-  async getUserById(id: string): Promise<AuthUser | null> {
+  async getUserRecord(id: string): Promise<AuthUserRecord | null> {
     const [user] = await db
       .select()
       .from(users)
       .where(eq(users.id, id))
       .limit(1);
-    return user ? this.toAuthUser(user) : null;
+    return user ? this.toAuthUserRecord(user) : null;
+  }
+
+  async getUserById(id: string): Promise<AuthUser | null> {
+    const record = await this.getUserRecord(id);
+    if (!record || record.disabledAt) return null;
+    return {
+      id: record.id,
+      email: record.email,
+      roles: record.roles,
+      signerAddress: record.signerAddress,
+    };
   }
 
   hasRole(user: AuthUser, role: Role): boolean {
@@ -90,6 +126,14 @@ export class AuthService {
       email: user.email,
       roles: user.roles as Role[],
       signerAddress: user.signerAddress,
+    };
+  }
+
+  private toAuthUserRecord(user: typeof users.$inferSelect): AuthUserRecord {
+    return {
+      ...this.toAuthUser(user),
+      disabledAt: user.disabledAt,
+      credentialsUpdatedAt: user.credentialsUpdatedAt,
     };
   }
 }

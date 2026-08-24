@@ -7,6 +7,14 @@ export interface AuthUser {
   signerAddress: string | null;
 }
 
+export interface AdminUser {
+  id: string;
+  email: string;
+  roles: string[];
+  signerAddress: string | null;
+  createdAt: string;
+}
+
 export interface DiscoveredPermissionKey {
   address: string;
   weight: number;
@@ -77,6 +85,40 @@ export const api = {
   },
   publicConfig() {
     return apiFetch<Record<string, unknown>>("/api/config/public");
+  },
+  listAdminUsers() {
+    return apiFetch<{ users: AdminUser[] }>("/api/admin/users");
+  },
+  createAdminUser(input: {
+    email: string;
+    password: string;
+    roles: string[];
+    signerAddress?: string | null;
+  }) {
+    return apiFetch<AdminUser>("/api/admin/users", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+  },
+  updateAdminUser(
+    id: string,
+    input: { roles?: string[]; signerAddress?: string | null },
+  ) {
+    return apiFetch<AdminUser>(`/api/admin/users/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    });
+  },
+  disableAdminUser(id: string) {
+    return apiFetch<{ ok: boolean }>(`/api/admin/users/${id}`, {
+      method: "DELETE",
+    });
+  },
+  resetAdminUserPassword(id: string, password: string) {
+    return apiFetch<{ ok: boolean }>(`/api/admin/users/${id}/reset-password`, {
+      method: "POST",
+      body: JSON.stringify({ password }),
+    });
   },
   adminTreasuryConfig() {
     return apiFetch<TreasuryConfigResponse>("/api/admin/treasury-config");

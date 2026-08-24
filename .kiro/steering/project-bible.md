@@ -442,8 +442,9 @@ POC artifacts: `scripts/ledger-poc/` or `docs/ledger-poc-report.md`.
 3. **Request Detail** — full summary, signatures, weight, audit timeline, role-based actions
 4. **Signing Queue** — pending requests sorted by expiration
 5. **Treasury Health** — on-chain permissions, balances, RPC status
-6. **Admin → Treasury Settings** — discover on-chain Active Permission, map keys to Signer A/B/C, save to DB
-7. **Audit** — filters, CSV export
+6. **Admin → Users** — list, create, assign roles / signer address, reset password, disable
+7. **Admin → Treasury Settings** — discover on-chain Active Permission, map keys to Signer A/B/C, save to DB
+8. **Audit** — filters, CSV export
 
 ### 12.2 UX Rules
 

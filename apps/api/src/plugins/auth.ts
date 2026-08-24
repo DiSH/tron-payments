@@ -1,5 +1,9 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
-import type { AuthService, AuthUser } from "../services/auth.service.js";
+import {
+  isTokenStale,
+  type AuthService,
+  type AuthUser,
+} from "../services/auth.service.js";
 import type { Role } from "@tron-payments/shared";
 
 declare module "fastify" {
@@ -16,11 +20,19 @@ export function createAuthHook(auth: AuthService) {
     }
     try {
       const tokenUser = auth.verifyToken(header.slice(7));
-      const user = await auth.getUserById(tokenUser.id);
-      if (!user) {
+      const record = await auth.getUserRecord(tokenUser.id);
+      if (!record || record.disabledAt) {
         return reply.code(401).send({ error: "Unauthorized" });
       }
-      request.user = user;
+      if (isTokenStale(tokenUser.iat, record.credentialsUpdatedAt)) {
+        return reply.code(401).send({ error: "Unauthorized" });
+      }
+      request.user = {
+        id: record.id,
+        email: record.email,
+        roles: record.roles,
+        signerAddress: record.signerAddress,
+      };
     } catch {
       return reply.code(401).send({ error: "Invalid token" });
     }

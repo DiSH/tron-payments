@@ -1,8 +1,14 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyRequest } from "fastify";
+import { z } from "zod";
 import { createAuthHook, requireRoles } from "../plugins/auth.js";
 import type { AppContext } from "../context.js";
+import type { AuditContext } from "../services/audit.service.js";
 import { generateSigningToken } from "../services/audit.service.js";
 import { TreasuryConfigError } from "../services/treasury-config.service.js";
+import {
+  MIN_PASSWORD_LENGTH,
+  UserServiceError,
+} from "../services/user.service.js";
 
 export async function registerAuthRoutes(app: FastifyInstance, ctx: AppContext) {
   app.post("/api/auth/login", async (request, reply) => {
@@ -223,6 +229,134 @@ function sendTreasuryConfigError(
   return reply.code(500).send({
     error: err instanceof Error ? err.message : String(err),
   });
+}
+
+const createUserBodySchema = z.object({
+  email: z.string().min(1),
+  password: z.string().min(MIN_PASSWORD_LENGTH),
+  roles: z.array(z.string()).min(1),
+  signerAddress: z.string().nullable().optional(),
+});
+
+const updateUserBodySchema = z
+  .object({
+    roles: z.array(z.string()).min(1).optional(),
+    signerAddress: z.string().nullable().optional(),
+  })
+  .refine(
+    (body) => body.roles !== undefined || body.signerAddress !== undefined,
+    { message: "roles or signerAddress required" },
+  );
+
+const resetPasswordBodySchema = z.object({
+  password: z.string().min(MIN_PASSWORD_LENGTH),
+});
+
+function adminAuditContext(request: FastifyRequest): AuditContext {
+  const userAgent = request.headers["user-agent"];
+  return {
+    actorUserId: request.user!.id,
+    actorRole: "admin",
+    ipAddress: request.ip,
+    userAgent: typeof userAgent === "string" ? userAgent : undefined,
+  };
+}
+
+function sendUserServiceError(
+  reply: import("fastify").FastifyReply,
+  err: unknown,
+) {
+  if (err instanceof UserServiceError) {
+    return reply.code(err.statusCode).send({ error: err.message });
+  }
+  if (err instanceof z.ZodError) {
+    return reply.code(400).send({
+      error: "Invalid request",
+      details: err.issues.map((issue) => issue.message),
+    });
+  }
+  return reply.code(500).send({
+    error: err instanceof Error ? err.message : String(err),
+  });
+}
+
+export async function registerAdminUserRoutes(
+  app: FastifyInstance,
+  ctx: AppContext,
+) {
+  const auth = createAuthHook(ctx.auth);
+  const adminOnly = requireRoles("admin");
+
+  app.get(
+    "/api/admin/users",
+    { preHandler: [auth, adminOnly] },
+    async () => {
+      const list = await ctx.users.list();
+      return { users: list };
+    },
+  );
+
+  app.post(
+    "/api/admin/users",
+    { preHandler: [auth, adminOnly] },
+    async (request, reply) => {
+      try {
+        const body = createUserBodySchema.parse(request.body);
+        const user = await ctx.users.create(body, adminAuditContext(request));
+        return reply.code(201).send(user);
+      } catch (err) {
+        return sendUserServiceError(reply, err);
+      }
+    },
+  );
+
+  app.patch(
+    "/api/admin/users/:id",
+    { preHandler: [auth, adminOnly] },
+    async (request, reply) => {
+      const { id } = request.params as { id: string };
+      try {
+        const body = updateUserBodySchema.parse(request.body);
+        const user = await ctx.users.update(id, body, adminAuditContext(request));
+        return user;
+      } catch (err) {
+        return sendUserServiceError(reply, err);
+      }
+    },
+  );
+
+  app.delete(
+    "/api/admin/users/:id",
+    { preHandler: [auth, adminOnly] },
+    async (request, reply) => {
+      const { id } = request.params as { id: string };
+      try {
+        await ctx.users.disable(id, request.user!.id, adminAuditContext(request));
+        return { ok: true };
+      } catch (err) {
+        return sendUserServiceError(reply, err);
+      }
+    },
+  );
+
+  app.post(
+    "/api/admin/users/:id/reset-password",
+    { preHandler: [auth, adminOnly] },
+    async (request, reply) => {
+      const { id } = request.params as { id: string };
+      try {
+        const body = resetPasswordBodySchema.parse(request.body);
+        await ctx.users.resetPassword(
+          id,
+          body.password,
+          adminAuditContext(request),
+        );
+        return { ok: true };
+      } catch (err) {
+        return sendUserServiceError(reply, err);
+      }
+    },
+  );
 }
 
 export async function registerTreasuryRoutes(

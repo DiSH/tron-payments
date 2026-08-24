@@ -21,6 +21,7 @@ export function Layout() {
           <Link to="/requests/new">New request</Link>
           <Link to="/signing-queue">Signing queue</Link>
           <Link to="/treasury">Treasury</Link>
+          {hasRole("admin") && <Link to="/admin/users">Users</Link>}
           {hasRole("admin") && <Link to="/admin/treasury">Treasury settings</Link>}
           <Link to="/audit">Audit</Link>
         </nav>
