@@ -1,10 +1,14 @@
 import { useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
-import { api, formatAddress } from "../lib/api";
+import { api } from "../lib/api";
+import { LedgerAccountPicker } from "./LedgerAccountPicker";
 import {
-  connectAndGetAddress,
   evaluateSigningEligibility,
   isWebHidSupported,
+  listLedgerAccounts,
+  pickPreferredAccount,
+  setStoredDerivationPath,
+  type LedgerAccount,
   type SigningEligibilityStatus,
 } from "../ledger/tron-webhid";
 
@@ -20,10 +24,30 @@ const STATUS_COLOR: Record<SigningEligibilityStatus, string> = {
 export function ConnectLedgerButton() {
   const { user, hasRole } = useAuth();
   const [busy, setBusy] = useState(false);
-  const [deviceAddress, setDeviceAddress] = useState<string | null>(null);
+  const [accounts, setAccounts] = useState<LedgerAccount[]>([]);
+  const [selectedPath, setSelectedPath] = useState<string | null>(null);
+  const [treasuryAddresses, setTreasuryAddresses] = useState<string[]>([]);
   const [status, setStatus] = useState<SigningEligibilityStatus | null>(null);
   const [detail, setDetail] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  function applyEligibility(address: string, treasury: string[]) {
+    const result = evaluateSigningEligibility({
+      deviceAddress: address,
+      profileAddress: user?.signerAddress ?? null,
+      treasuryAddresses: treasury,
+      hasSignerRole: hasRole("signer"),
+      webHidSupported: true,
+    });
+    setStatus(result.status);
+    setDetail(result.detail);
+  }
+
+  function onSelectAccount(account: LedgerAccount) {
+    setSelectedPath(account.derivationPath);
+    setStoredDerivationPath(account.derivationPath);
+    applyEligibility(account.address, treasuryAddresses);
+  }
 
   async function onConnect() {
     setBusy(true);
@@ -44,31 +68,35 @@ export function ConnectLedgerButton() {
         return;
       }
 
-      const { address } = await connectAndGetAddress();
-      setDeviceAddress(address);
+      const listed = await listLedgerAccounts();
+      const preferred = pickPreferredAccount(listed, user?.signerAddress ?? null);
+      setAccounts(listed);
+      setSelectedPath(preferred?.derivationPath ?? null);
+      if (preferred) {
+        setStoredDerivationPath(preferred.derivationPath);
+      }
 
       const config = await api.publicConfig();
-      const treasuryAddresses = Array.isArray(config.signers)
+      const nextTreasury = Array.isArray(config.signers)
         ? (config.signers as Array<{ address?: string }>)
             .map((s) => s.address)
             .filter((a): a is string => Boolean(a))
         : [];
+      setTreasuryAddresses(nextTreasury);
 
-      const result = evaluateSigningEligibility({
-        deviceAddress: address,
-        profileAddress: user?.signerAddress ?? null,
-        treasuryAddresses,
-        hasSignerRole: hasRole("signer"),
-        webHidSupported: true,
-      });
-      setStatus(result.status);
-      setDetail(result.detail);
+      if (preferred) {
+        applyEligibility(preferred.address, nextTreasury);
+      }
     } catch (err) {
+      setAccounts([]);
+      setSelectedPath(null);
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setBusy(false);
     }
   }
+
+  const selected = accounts.find((account) => account.derivationPath === selectedPath);
 
   return (
     <section
@@ -81,17 +109,22 @@ export function ConnectLedgerButton() {
     >
       <h2 style={{ marginTop: 0 }}>Connect Ledger</h2>
       <p style={{ color: "#555", marginTop: 0 }}>
-        Read your Ledger address via WebHID and check whether you can sign treasury
-        payments. An admin must assign the Signer role and include your address in
-        treasury settings.
+        Unlock your Ledger, open the Tron app, then connect via WebHID. Choose the
+        account if you have several TRC-20 addresses. An admin must assign the
+        Signer role and include your address in treasury settings.
       </p>
       <button type="button" onClick={onConnect} disabled={busy}>
         {busy ? "Connecting…" : "Connect Ledger"}
       </button>
-      {deviceAddress && (
-        <p style={{ fontFamily: "monospace" }}>
-          Device: {formatAddress(deviceAddress)}
-        </p>
+      {selectedPath && accounts.length > 0 && (
+        <LedgerAccountPicker
+          accounts={accounts}
+          selectedPath={selectedPath}
+          onSelect={onSelectAccount}
+        />
+      )}
+      {selected && (
+        <p style={{ fontFamily: "monospace" }}>Device: {selected.address}</p>
       )}
       {status && detail && (
         <p style={{ color: STATUS_COLOR[status] }}>

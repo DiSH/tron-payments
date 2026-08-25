@@ -1,0 +1,18 @@
+
+> @tron-payments/api@0.0.0 test
+> vitest run
+
+
+ RUN  v3.2.7 /home/dish/Dev/Work/XPN/tron-payments/apps/api
+
+ ✓ src/domain.test.ts (2 tests) 132ms
+ ✓ src/config/env.test.ts (2 tests) 16ms
+ ✓ src/services/treasury-config.service.test.ts (7 tests) 348ms
+ ✓ src/services/user.service.test.ts (19 tests) 217ms
+ ✓ src/services/auth.service.test.ts (1 test) 104ms
+
+ Test Files  5 passed (5)
+      Tests  31 passed (31)
+   Start at  17:16:32
+   Duration  37.07s (transform 4.76s, setup 0ms, collect 73.28s, tests 816ms, environment 26ms, prepare 16.45s)
+

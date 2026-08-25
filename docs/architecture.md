@@ -192,7 +192,7 @@ src/
 │   ├── AdminUsers.tsx
 │   └── AuditLog.tsx
 ├── components/
-├── ledger/                # WebHID Ledger (getAddress, signPersonalMessage, signTxHash)
+├── ledger/                # WebHID Ledger (list accounts, getAddress, signPersonalMessage, signTxHash)
 ├── hooks/
 ├── services/              # API client
 └── lib/
@@ -260,7 +260,7 @@ Requester → Web UI form
 ```text
 Signer → Web UI checkbox + "Sign with Ledger"
   → GET /api/payment-requests/:id/signing-payload
-  → WebHID signTransactionHash on Ledger
+  → WebHID signTransactionHash (stored derivation path, or scan BIP44 accounts 0–4 to match signer address)
   → POST /api/payment-requests/:id/signatures
   → API verifies ECDSA + getSignWeight
   → Status: PARTIALLY_SIGNED or READY_TO_BROADCAST
@@ -271,8 +271,9 @@ Signer → Web UI checkbox + "Sign with Ledger"
 
 ```text
 Guest → "Sign in with Ledger"
+  → WebHID lists BIP44 accounts 0–4; user selects the TRC-20 address
   → POST /api/auth/ledger/challenge
-  → WebHID signPersonalMessage
+  → WebHID signPersonalMessage on the selected derivation path
   → POST /api/auth/ledger/verify
   → Find or create user by signer_address (roles empty until Admin assigns)
   → JWT issued

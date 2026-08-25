@@ -1,0 +1,119 @@
+-rw-rw-r-- 1 dish dish   264 Aug 25 17:15 /home/dish/.cursor/projects/home-dish-Dev-Work-XPN-tron-payments/terminals/760385.txt
+-rw-rw-r-- 1 dish dish   323 Aug 25 17:15 /home/dish/.cursor/projects/home-dish-Dev-Work-XPN-tron-payments/terminals/356998.txt
+-rw-rw-r-- 1 dish dish   535 Aug 25 17:15 /home/dish/.cursor/projects/home-dish-Dev-Work-XPN-tron-payments/terminals/569851.txt
+-rw-rw-r-- 1 dish dish   531 Aug 25 17:15 /home/dish/.cursor/projects/home-dish-Dev-Work-XPN-tron-payments/terminals/569852.txt
+-rw-rw-r-- 1 dish dish   486 Aug 25 17:15 /home/dish/.cursor/projects/home-dish-Dev-Work-XPN-tron-payments/terminals/760392.txt
+-rw-rw-r-- 1 dish dish   423 Aug 25 17:15 /home/dish/.cursor/projects/home-dish-Dev-Work-XPN-tron-payments/terminals/176025.txt
+-rw-rw-r-- 1 dish dish   179 Aug 25 17:15 /home/dish/.cursor/projects/home-dish-Dev-Work-XPN-tron-payments/terminals/760401.txt
+-rw-rw-r-- 1 dish dish   459 Aug 25 17:15 /home/dish/.cursor/projects/home-dish-Dev-Work-XPN-tron-payments/terminals/760387.txt
+-rw-rw-r-- 1 dish dish   261 Aug 25 17:15 /home/dish/.cursor/projects/home-dish-Dev-Work-XPN-tron-payments/terminals/176028.txt
+-rw-rw-r-- 1 dish dish   254 Aug 25 17:15 /home/dish/.cursor/projects/home-dish-Dev-Work-XPN-tron-payments/terminals/760395.txt
+-rw-rw-r-- 1 dish dish   752 Aug 25 17:15 /home/dish/.cursor/projects/home-dish-Dev-Work-XPN-tron-payments/terminals/176026.txt
+-rw-rw-r-- 1 dish dish   707 Aug 25 17:15 /home/dish/.cursor/projects/home-dish-Dev-Work-XPN-tron-payments/terminals/176027.txt
+-rw-rw-r-- 1 dish dish   331 Aug 25 17:15 /home/dish/.cursor/projects/home-dish-Dev-Work-XPN-tron-payments/terminals/357001.txt
+-rw-rw-r-- 1 dish dish   319 Aug 25 17:15 /home/dish/.cursor/projects/home-dish-Dev-Work-XPN-tron-payments/terminals/760390.txt
+-rw-rw-r-- 1 dish dish   329 Aug 25 17:15 /home/dish/.cursor/projects/home-dish-Dev-Work-XPN-tron-payments/terminals/569850.txt
+-rw-rw-r-- 1 dish dish   362 Aug 25 17:15 /home/dish/.cursor/projects/home-dish-Dev-Work-XPN-tron-payments/terminals/760389.txt
+-rw-rw-r-- 1 dish dish   476 Aug 25 17:15 /home/dish/.cursor/projects/home-dish-Dev-Work-XPN-tron-payments/terminals/760398.txt
+-rw-rw-r-- 1 dish dish   201 Aug 25 17:15 /home/dish/.cursor/projects/home-dish-Dev-Work-XPN-tron-payments/terminals/176022.txt
+-rw-rw-r-- 1 dish dish   215 Aug 25 17:15 /home/dish/.cursor/projects/home-dish-Dev-Work-XPN-tron-payments/terminals/760400.txt
+-rw-rw-r-- 1 dish dish   210 Aug 25 17:15 /home/dish/.cursor/projects/home-dish-Dev-Work-XPN-tron-payments/terminals/176014.txt
+-rw-rw-r-- 1 dish dish   377 Aug 25 17:15 /home/dish/.cursor/projects/home-dish-Dev-Work-XPN-tron-payments/terminals/670885.txt
+-rw-rw-r-- 1 dish dish   306 Aug 25 17:15 /home/dish/.cursor/projects/home-dish-Dev-Work-XPN-tron-payments/terminals/356758.txt
+-rw-rw-r-- 1 dish dish   442 Aug 25 17:15 /home/dish/.cursor/projects/home-dish-Dev-Work-XPN-tron-payments/terminals/760382.txt
+-rw-rw-r-- 1 dish dish   218 Aug 25 17:15 /home/dish/.cursor/projects/home-dish-Dev-Work-XPN-tron-payments/terminals/760388.txt
+-rw-rw-r-- 1 dish dish   224 Aug 25 17:15 /home/dish/.cursor/projects/home-dish-Dev-Work-XPN-tron-payments/terminals/356759.txt
+-rw-rw-r-- 1 dish dish   293 Aug 25 17:15 /home/dish/.cursor/projects/home-dish-Dev-Work-XPN-tron-payments/terminals/760386.txt
+-rw-rw-r-- 1 dish dish   214 Aug 25 17:15 /home/dish/.cursor/projects/home-dish-Dev-Work-XPN-tron-payments/terminals/416861.txt
+-rw-rw-r-- 1 dish dish   388 Aug 25 17:15 /home/dish/.cursor/projects/home-dish-Dev-Work-XPN-tron-payments/terminals/20595.txt
+-rw-rw-r-- 1 dish dish   413 Aug 25 17:15 /home/dish/.cursor/projects/home-dish-Dev-Work-XPN-tron-payments/terminals/760383.txt
+-rw-rw-r-- 1 dish dish   273 Aug 25 17:15 /home/dish/.cursor/projects/home-dish-Dev-Work-XPN-tron-payments/terminals/760396.txt
+---
+===== 176023 =====
+---
+pid: 47775
+cwd: "/home/dish/Dev/Work/XPN/tron-payments"
+command: "bash --noprofile --norc << 'SCRIPT'\nset +e\nOUT=/home/dish/Dev/Work/XPN/tron-payments/tmp-test-results.txt\ncd /home/dish/Dev/Work/XPN/tron-payments || exit 1\n{\n  echo \"=== Test run started: $(date -Iseconds) ===\"\n  echo \"node_modules/@ledgerhq:\"\n  ls node_modules/@ledgerhq 2>&1 | head -20\n  echo \"\"\n  echo \"=== apps/signer before cleanup ===\"\n  ls -la apps/signer 2>&1\n  echo \"\"\n  echo \"=== npm test -w @tron-payments/api ===\"\n  npm test -w @tron-payments/api 2>&1\n  echo \"API_TEST_EXIT:$?\"\n  echo \"\"\n  echo \"=== npm test -w @tron-payments/web ===\"\n  npm test -w @tron-payments/web 2>&1\n  echo \"WEB_TEST_EXIT:$?\"\n  echo \"\"\n  echo \"=== npm run lint -w @tron-payments/api ===\"\n  npm run lint -w @tron-payments/api 2>&1\n  echo \"API_LINT_EXIT:$?\"\n  echo \"\"\n  echo \"=== npm run lint -w @tron-payments/web ===\"\n  npm run lint -w @tron-payments/web 2>&1\n  echo \"WEB_LINT_EXIT:$?\"\n  echo \"\"\n  echo \"=== cleanup apps/signer ===\"\n  rm -rf apps/signer\n  echo \"rm_signer_exit:$?\"\n  ls apps/signer 2>&1 || echo \"apps/signer removed\"\n  # clean empty parent dirs if needed\n  rmdir apps/signer 2>/dev/null\n  find apps -type d -empty 2>/dev/null | head -20\n  echo \"\"\n  echo \"=== COMPLETE: $(date -Iseconds) ===\"\n} > \"$OUT\" 2>&1\nSCRIPT"
+title: "Background full test lint cleanup script"
+status: running  
+started_at: 2026-08-25T11:08:55.035Z
+running_for_ms: 11203598 
+---
+
+===== 176024 =====
+---
+pid: 47904
+cwd: "/home/dish/Dev/Work/XPN/tron-payments"
+command: "bash --noprofile --norc -c '\nfor i in $(seq 1 120); do\n  if grep -q \"COMPLETE:\" /home/dish/Dev/Work/XPN/tron-payments/tmp-test-results.txt 2>/dev/null; then\n    echo \"WATCHER_DONE\"\n    wc -l /home/dish/Dev/Work/XPN/tron-payments/tmp-test-results.txt\n    grep -E \"EXIT:|PASS|FAIL|Tests |failed|passed|error TS|COMPLETE|apps/signer\" /home/dish/Dev/Work/XPN/tron-payments/tmp-test-results.txt\n    exit 0\n  fi\n  # progress heartbeat to stdout\n  if [ -f /home/dish/Dev/Work/XPN/tron-payments/tmp-test-results.txt ]; then\n    lines=$(wc -l < /home/dish/Dev/Work/XPN/tron-payments/tmp-test-results.txt)\n    echo \"WATCHER_TICK_$i lines=$lines\"\n  else\n    echo \"WATCHER_TICK_$i no_file_yet\"\n  fi\n  sleep 5\ndone\necho \"WATCHER_TIMEOUT\"\nexit 1\n'"
+title: "Poll test results file for completion"
+status: running  
+started_at: 2026-08-25T11:09:13.333Z
+running_for_ms: 11185092 
+---
+WATCHER_TICK_1 no_file_yet
+WATCHER_TICK_2 no_file_yet
+WATCHER_TICK_3 no_file_yet
+WATCHER_TICK_4 no_file_yet
+WATCHER_TICK_5 no_file_yet
+WATCHER_TICK_6 no_file_yet
+WATCHER_TICK_7 no_file_yet
+WATCHER_TICK_8 no_file_yet
+WATCHER_TICK_9 no_file_yet
+
+===== 176026 =====
+---
+pid: 50965
+cwd: "/home/dish/Dev/Work/XPN/tron-payments"
+command: "bash --noprofile --norc -c 'ps -p 47775,47904,48143 -o pid,stat,etime,cmd 2>&1 | tee /home/dish/Dev/Work/XPN/tron-payments/tmp-ps-check.txt; ls -la /home/dish/Dev/Work/XPN/tron-payments/tmp-test-results.txt /home/dish/Dev/Work/XPN/tron-payments/tmp-api-test.txt /home/dish/Dev/Work/XPN/tron-payments/tmp-ps-check.txt 2>&1 | tee -a /home/dish/Dev/Work/XPN/tron-payments/tmp-ps-check.txt; head -c 2000 /home/dish/Dev/Work/XPN/tron-payments/tmp-test-results.txt 2>&1 | tee -a /home/dish/Dev/Work/XPN/tron-payments/tmp-ps-check.txt; echo PS_CHECK_DONE'"
+title: "Check PIDs and results file existence"
+status: running  
+started_at: 2026-08-25T11:14:41.870Z
+running_for_ms: 10858890 
+---
+
+===== 176019 =====
+---
+pid: 47222
+cwd: "/home/dish/Dev/Work/XPN/tron-payments"
+command: "zsh -f -c 'echo ZSH_OK; date; pwd'"
+title: "zsh without rc files"
+status: succeeded
+started_at: 2026-08-25T11:07:07.541Z
+running_for_ms: 10846045 
+---
+ZSH_OK
+вт 25 авг 2026 17:07:43 MSK
+/home/dish/Dev/Work/XPN/tron-payments
+
+---
+exit_code: 0
+elapsed_ms: 10846043
+ended_at: 2026-08-25T14:07:53.584Z
+---
+
+===== 176020 =====
+---
+pid: 47285
+cwd: "/home/dish/Dev/Work/XPN/tron-payments"
+command: "bash --noprofile --norc -c 'echo BASH_OK; date; cd /home/dish/Dev/Work/XPN/tron-payments && ls node_modules/@ledgerhq 2>&1 | head -5; ls -la apps/signer 2>&1 | head -10'"
+title: "bash noprofile check ledgerhq signer"
+status: succeeded
+started_at: 2026-08-25T11:07:13.901Z
+running_for_ms: 11267264 
+---
+BASH_OK
+вт 25 авг 2026 17:14:46 MSK
+devices
+errors
+hw-app-trx
+hw-transport
+hw-transport-node-hid
+ls: cannot access 'apps/signer': No such file or directory
+
+---
+exit_code: 0
+elapsed_ms: 11267259
+ended_at: 2026-08-25T14:15:01.160Z
+---
+
+TERM_DUMP_DONE

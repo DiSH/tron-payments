@@ -1,0 +1,92 @@
+=== Shell harness diagnosis 2026-08-25T17:19:39+03:00 ===
+Foreground Shell output capture is broken (commands hang with no stdout returned).
+Background jobs were started; checking whether they produced files.
+
+=== File status ===
+-rw-rw-r-- 1 dish dish  558 Aug 25 17:17 /home/dish/Dev/Work/XPN/tron-payments/tmp-api-test.txt
+-rw-rw-r-- 1 dish dish  230 Aug 25 17:19 /home/dish/Dev/Work/XPN/tron-payments/tmp-shell-diagnosis.txt
+-rw-rw-r-- 1 dish dish 8417 Aug 25 17:15 /home/dish/Dev/Work/XPN/tron-payments/tmp-term-dump.txt
+-rw-rw-r-- 1 dish dish 1523 Aug 25 17:19 /home/dish/Dev/Work/XPN/tron-payments/tmp-test-results.txt
+
+=== Partial tmp-test-results (if any) ===
+=== Test run started: 2026-08-25T17:15:55+03:00 ===
+node_modules/@ledgerhq:
+devices
+errors
+hw-app-trx
+hw-transport
+hw-transport-node-hid
+hw-transport-node-hid-noevents
+hw-transport-webhid
+logs
+
+=== apps/signer before cleanup ===
+ls: cannot access 'apps/signer': No such file or directory
+
+=== npm test -w @tron-payments/api ===
+
+> @tron-payments/api@0.0.0 test
+> vitest run
+
+
+ RUN  v3.2.7 /home/dish/Dev/Work/XPN/tron-payments/apps/api
+
+ ✓ src/config/env.test.ts (2 tests) 56ms
+ ✓ src/domain.test.ts (2 tests) 141ms
+ ✓ src/services/user.service.test.ts (19 tests) 596ms
+ ✓ src/services/auth.service.test.ts (1 test) 174ms
+ ✓ src/services/treasury-config.service.test.ts (7 tests) 668ms
+
+ Test Files  5 passed (5)
+      Tests  31 passed (31)
+   Start at  17:16:09
+   Duration  37.95s (transform 8.91s, setup 0ms, collect 93.31s, tests 1.63s, environment 20ms, prepare 10.86s)
+
+API_TEST_EXIT:0
+
+=== npm test -w @tron-payments/web ===
+
+> @tron-payments/web@0.0.0 test
+> vitest run --passWithNoTests
+
+
+ RUN  v3.2.7 /home/dish/Dev/Work/XPN/tron-payments/apps/web
+
+ ✓ src/ledger/tron-webhid.test.ts (4 tests) 131ms
+
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+   Start at  17:17:00
+   Duration  7.79s (transform 1.87s, setup 0ms, collect 2.32s, tests 131ms, environment 1ms, prepare 863ms)
+
+WEB_TEST_EXIT:0
+
+=== npm run lint -w @tron-payments/api ===
+
+> @tron-payments/api@0.0.0 lint
+> tsc --noEmit
+
+API_LINT_EXIT:0
+
+=== npm run lint -w @tron-payments/web ===
+
+> @tron-payments/web@0.0.0 lint
+> tsc --noEmit
+
+
+=== Process check ===
+dish       47775 28.8  0.5 357932 343792 ?       Ss   14:08  55:05 /usr/bin/zsh -c builtin export PATH="/usr/bin:/bin:/usr/sbin:/sbin${PATH:+:$PATH}"; snap=$(command cat <&3); builtin unsetopt aliases 2>/dev/null; builtin unalias -m '*' 2>/dev/null || true; builtin eval "$snap" && { builtin unsetopt nounset 2>/dev/null || true; builtin eval "${__CURSOR_SANDBOX_ENV_RESTORE:-}" 2>/dev/null; builtin export PWD="$(builtin pwd)"; builtin setopt aliases 2>/dev/null; builtin eval "$1" < /dev/null; }; COMMAND_EXIT_CODE=$?; dump_zsh_state >&4; builtin exit $COMMAND_EXIT_CODE -- bash --noprofile --norc << 'SCRIPT' set +e OUT=/home/dish/Dev/Work/XPN/tron-payments/tmp-test-results.txt cd /home/dish/Dev/Work/XPN/tron-payments || exit 1 {   echo "=== Test run started: $(date -Iseconds) ==="   echo "node_modules/@ledgerhq:"   ls node_modules/@ledgerhq 2>&1 | head -20   echo ""   echo "=== apps/signer before cleanup ==="   ls -la apps/signer 2>&1   echo ""   echo "=== npm test -w @tron-payments/api ==="   npm test -w @tron-payments/api 2>&1   echo "API_TEST_EXIT:$?"   echo ""   echo "=== npm test -w @tron-payments/web ==="   npm test -w @tron-payments/web 2>&1   echo "WEB_TEST_EXIT:$?"   echo ""   echo "=== npm run lint -w @tron-payments/api ==="   npm run lint -w @tron-payments/api 2>&1   echo "API_LINT_EXIT:$?"   echo ""   echo "=== npm run lint -w @tron-payments/web ==="   npm run lint -w @tron-payments/web 2>&1   echo "WEB_LINT_EXIT:$?"   echo ""   echo "=== cleanup apps/signer ==="   rm -rf apps/signer   echo "rm_signer_exit:$?"   ls apps/signer 2>&1 || echo "apps/signer removed"   # clean empty parent dirs if needed   rmdir apps/signer 2>/dev/null   find apps -type d -empty 2>/dev/null | head -20   echo ""   echo "=== COMPLETE: $(date -Iseconds) ===" } > "$OUT" 2>&1 SCRIPT
+dish       50965 28.8  0.4 338812 324620 ?       Rs   14:14  53:21 /usr/bin/zsh -c builtin export PATH="/usr/bin:/bin:/usr/sbin:/sbin${PATH:+:$PATH}"; snap=$(command cat <&3); builtin unsetopt aliases 2>/dev/null; builtin unalias -m '*' 2>/dev/null || true; builtin eval "$snap" && { builtin unsetopt nounset 2>/dev/null || true; builtin eval "${__CURSOR_SANDBOX_ENV_RESTORE:-}" 2>/dev/null; builtin export PWD="$(builtin pwd)"; builtin setopt aliases 2>/dev/null; builtin eval "$1" < /dev/null; }; COMMAND_EXIT_CODE=$?; dump_zsh_state >&4; builtin exit $COMMAND_EXIT_CODE -- bash --noprofile --norc -c 'ps -p 47775,47904,48143 -o pid,stat,etime,cmd 2>&1 | tee /home/dish/Dev/Work/XPN/tron-payments/tmp-ps-check.txt; ls -la /home/dish/Dev/Work/XPN/tron-payments/tmp-test-results.txt /home/dish/Dev/Work/XPN/tron-payments/tmp-api-test.txt /home/dish/Dev/Work/XPN/tron-payments/tmp-ps-check.txt 2>&1 | tee -a /home/dish/Dev/Work/XPN/tron-payments/tmp-ps-check.txt; head -c 2000 /home/dish/Dev/Work/XPN/tron-payments/tmp-test-results.txt 2>&1 | tee -a /home/dish/Dev/Work/XPN/tron-payments/tmp-ps-check.txt; echo PS_CHECK_DONE'
+dish       53678 30.2  0.4 338956 324772 ?       Rs   14:20  54:18 /usr/bin/zsh -c builtin export PATH="/usr/bin:/bin:/usr/sbin:/sbin${PATH:+:$PATH}"; snap=$(command cat <&3); builtin unsetopt aliases 2>/dev/null; builtin unalias -m '*' 2>/dev/null || true; builtin eval "$snap" && { builtin unsetopt nounset 2>/dev/null || true; builtin eval "${__CURSOR_SANDBOX_ENV_RESTORE:-}" 2>/dev/null; builtin export PWD="$(builtin pwd)"; builtin setopt aliases 2>/dev/null; builtin eval "$1" < /dev/null; }; COMMAND_EXIT_CODE=$?; dump_zsh_state >&4; builtin exit $COMMAND_EXIT_CODE -- cd /home/dish/Dev/Work/XPN/tron-payments && npm test -w @tron-payments/api && npm test -w @tron-payments/web && npm run lint -w @tron-payments/api && npm run lint -w @tron-payments/web
+dish       76558 28.5  0.4 335452 321160 ?       Rs   14:58  40:29 /usr/bin/zsh -c builtin export PATH="/usr/bin:/bin:/usr/sbin:/sbin${PATH:+:$PATH}"; snap=$(command cat <&3); builtin unsetopt aliases 2>/dev/null; builtin unalias -m '*' 2>/dev/null || true; builtin eval "$snap" && { builtin unsetopt nounset 2>/dev/null || true; builtin eval "${__CURSOR_SANDBOX_ENV_RESTORE:-}" 2>/dev/null; builtin export PWD="$(builtin pwd)"; builtin setopt aliases 2>/dev/null; builtin eval "$1" < /dev/null; }; COMMAND_EXIT_CODE=$?; dump_zsh_state >&4; builtin exit $COMMAND_EXIT_CODE -- cd /home/dish/Dev/Work/XPN/tron-payments && npm test -w @tron-payments/api && npm test -w @tron-payments/web && npm run lint -w @tron-payments/api && npm run lint -w @tron-payments/web
+dish       96468 28.2  0.4 332432 318128 ?       Rs   15:32  30:22 /usr/bin/zsh -c builtin export PATH="/usr/bin:/bin:/usr/sbin:/sbin${PATH:+:$PATH}"; snap=$(command cat <&3); builtin unsetopt aliases 2>/dev/null; builtin unalias -m '*' 2>/dev/null || true; builtin eval "$snap" && { builtin unsetopt nounset 2>/dev/null || true; builtin eval "${__CURSOR_SANDBOX_ENV_RESTORE:-}" 2>/dev/null; builtin export PWD="$(builtin pwd)"; builtin setopt aliases 2>/dev/null; builtin eval "$1" < /dev/null; }; COMMAND_EXIT_CODE=$?; dump_zsh_state >&4; builtin exit $COMMAND_EXIT_CODE -- cd /home/dish/Dev/Work/XPN/tron-payments && npm test -w @tron-payments/shared 2>&1 | tail -40
+dish      154623 27.6  0.4 322076 307832 ?       Rs   17:05   3:55 /usr/bin/zsh -c builtin export PATH="/usr/bin:/bin:/usr/sbin:/sbin${PATH:+:$PATH}"; snap=$(command cat <&3); builtin unsetopt aliases 2>/dev/null; builtin unalias -m '*' 2>/dev/null || true; builtin eval "$snap" && { builtin unsetopt nounset 2>/dev/null || true; builtin eval "${__CURSOR_SANDBOX_ENV_RESTORE:-}" 2>/dev/null; builtin export PWD="$(builtin pwd)"; builtin setopt aliases 2>/dev/null; builtin eval "$1" < /dev/null; }; COMMAND_EXIT_CODE=$?; dump_zsh_state >&4; builtin exit $COMMAND_EXIT_CODE -- head -n 40 /home/dish/.cursor/projects/home-dish-Dev-Work-XPN-tron-payments/terminals/176012.txt; echo '===='; ls -la /home/dish/Dev/Work/XPN/tron-payments/tmp-test-results.txt /home/dish/Dev/Work/XPN/tron-payments/tmp-shell-diagnosis.txt 2>&1; echo '===='; tail -n 80 /home/dish/Dev/Work/XPN/tron-payments/tmp-test-results.txt 2>&1; echo '===='; head -n 30 /home/dish/.cursor/projects/home-dish-Dev-Work-XPN-tron-payments/terminals/176023.txt 2>&1; echo '===='; tail -n 40 /home/dish/.cursor/projects/home-dish-Dev-Work-XPN-tron-payments/terminals/176023.txt 2>&1
+dish      155637 29.6  0.4 321740 307528 ?       Rs   17:07   3:34 /usr/bin/zsh -c builtin export PATH="/usr/bin:/bin:/usr/sbin:/sbin${PATH:+:$PATH}"; snap=$(command cat <&3); builtin unsetopt aliases 2>/dev/null; builtin unalias -m '*' 2>/dev/null || true; builtin eval "$snap" && { builtin unsetopt nounset 2>/dev/null || true; builtin eval "${__CURSOR_SANDBOX_ENV_RESTORE:-}" 2>/dev/null; builtin export PWD="$(builtin pwd)"; builtin setopt aliases 2>/dev/null; builtin eval "$1" < /dev/null; }; COMMAND_EXIT_CODE=$?; dump_zsh_state >&4; builtin exit $COMMAND_EXIT_CODE -- kill 47775 47904 48143 154623 2>/dev/null; sleep 1; cd /home/dish/Dev/Work/XPN/tron-payments && { echo "=== Test run started: $(date -Iseconds) ==="; echo "=== npm test -w @tron-payments/api ==="; npm test -w @tron-payments/api; echo "API_TEST_EXIT:$?"; echo "=== npm test -w @tron-payments/web ==="; npm test -w @tron-payments/web; echo "WEB_TEST_EXIT:$?"; echo "=== npm run lint -w @tron-payments/api ==="; npm run lint -w @tron-payments/api; echo "API_LINT_EXIT:$?"; echo "=== npm run lint -w @tron-payments/web ==="; npm run lint -w @tron-payments/web; echo "WEB_LINT_EXIT:$?"; rm -rf apps/signer; echo "signer_cleanup_done"; echo "=== COMPLETE: $(date -Iseconds) ==="; } > tmp-test-results.txt 2>&1
+
+=== PASS/FAIL SUMMARY (shell broken) ===
+api tests: UNKNOWN (shell output capture failed)
+web tests: UNKNOWN (shell output capture failed)
+api lint: UNKNOWN (shell output capture failed)
+web lint: UNKNOWN (shell output capture failed)
+apps/signer cleanup: UNKNOWN
+DIAGNOSIS_COMPLETE

@@ -6,6 +6,7 @@ import {
   type ReactNode,
 } from "react";
 import { api, type AuthUser } from "../lib/api";
+import { clearStoredDerivationPath } from "../ledger/tron-webhid";
 
 interface AuthContextValue {
   user: AuthUser | null;
@@ -65,6 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     localStorage.removeItem("auth_token");
+    clearStoredDerivationPath();
     setUser(null);
   };
 

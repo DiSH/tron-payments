@@ -1,12 +1,21 @@
 import { FormEvent, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import { isWebHidSupported, signPersonalMessage } from "../ledger/tron-webhid";
+import { LedgerAccountPicker } from "../components/LedgerAccountPicker";
+import {
+  listLedgerAccounts,
+  pickPreferredAccount,
+  setStoredDerivationPath,
+  signPersonalMessage,
+  type LedgerAccount,
+} from "../ledger/tron-webhid";
 
 export function LoginPage() {
   const { login, loginWithLedger, user, loading } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [ledgerBusy, setLedgerBusy] = useState(false);
+  const [accounts, setAccounts] = useState<LedgerAccount[]>([]);
+  const [selectedPath, setSelectedPath] = useState<string | null>(null);
 
   if (!loading && user) return <Navigate to="/" replace />;
 
@@ -21,17 +30,31 @@ export function LoginPage() {
     }
   }
 
-  async function onLedgerLogin() {
+  async function onDiscoverAccounts() {
     setError(null);
     setLedgerBusy(true);
     try {
-      if (!isWebHidSupported()) {
-        throw new Error(
-          "WebHID is not supported in this browser. Use Chrome or Edge over HTTPS/localhost.",
-        );
-      }
+      const listed = await listLedgerAccounts();
+      const preferred = pickPreferredAccount(listed, null);
+      setAccounts(listed);
+      setSelectedPath(preferred?.derivationPath ?? null);
+    } catch (err) {
+      setAccounts([]);
+      setSelectedPath(null);
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLedgerBusy(false);
+    }
+  }
+
+  async function onConfirmLedgerLogin() {
+    if (!selectedPath) return;
+    setError(null);
+    setLedgerBusy(true);
+    try {
+      setStoredDerivationPath(selectedPath);
       await loginWithLedger(async (message) => {
-        const signed = await signPersonalMessage(message);
+        const signed = await signPersonalMessage(message, selectedPath);
         return { signature: signed.signature, address: signed.address };
       });
     } catch (err) {
@@ -74,12 +97,38 @@ export function LoginPage() {
           <button type="submit">Sign in</button>
         </form>
         <div style={{ textAlign: "center", color: "#888" }}>or</div>
-        <button type="button" onClick={onLedgerLogin} disabled={ledgerBusy}>
-          {ledgerBusy ? "Waiting for Ledger…" : "Sign in with Ledger"}
-        </button>
+        {accounts.length === 0 ? (
+          <button type="button" onClick={onDiscoverAccounts} disabled={ledgerBusy}>
+            {ledgerBusy ? "Waiting for Ledger…" : "Sign in with Ledger"}
+          </button>
+        ) : (
+          <>
+            <LedgerAccountPicker
+              accounts={accounts}
+              selectedPath={selectedPath ?? accounts[0]?.derivationPath ?? ""}
+              onSelect={(account) => setSelectedPath(account.derivationPath)}
+              name="login-ledger-account"
+            />
+            <button
+              type="button"
+              onClick={onConfirmLedgerLogin}
+              disabled={ledgerBusy || !selectedPath}
+            >
+              {ledgerBusy ? "Waiting for Ledger…" : "Continue with selected account"}
+            </button>
+            <button
+              type="button"
+              onClick={onDiscoverAccounts}
+              disabled={ledgerBusy}
+            >
+              Rescan Ledger
+            </button>
+          </>
+        )}
         <p style={{ color: "#666", fontSize: 13, margin: 0 }}>
-          First Ledger login creates an account. An admin must grant the Signer role
-          and add your address to treasury settings before you can sign payments.
+          Unlock the Ledger and open the Tron app first. First Ledger login creates
+          an account. An admin must grant the Signer role and add your address to
+          treasury settings before you can sign payments.
         </p>
       </div>
     </div>

@@ -61,9 +61,9 @@ flowchart TB
 |---|---|
 | **Create request** | Web form → API validates → build USDT transfer tx → store canonical payload → AWAITING_SIGNATURES |
 | **User admin** | Admin Users page → create/update/disable/reset password → AuditEvent USER_* |
-| **Ledger login** | Challenge → WebHID signPersonalMessage → verify → find-or-create user → JWT |
-| **Connect Ledger** | WebHID getAddress → compare profile + treasury allowlist + signer role |
-| **Sign** | Web checkbox → GET signing-payload → WebHID signTransactionHash → API verifies ECDSA + getSignWeight |
+| **Ledger login** | List BIP44 accounts → user selects → challenge → WebHID signPersonalMessage → verify → find-or-create user → JWT |
+| **Connect Ledger** | WebHID list accounts 0–4 → user selects → compare profile + treasury allowlist + signer role |
+| **Sign** | Web checkbox → GET signing-payload → WebHID signTransactionHash (selected/discovered path) → API verifies ECDSA + getSignWeight |
 | **Broadcast** | Executor confirms → API re-validates all gates → broadcasttransaction → poll confirmation → CONFIRMED |
 | **Audit** | Every mutation → append AuditEvent with before/after state |
 | **Config check** | Startup + admin save + pre-payment → read on-chain permissions → block if mismatch / unconfigured |

@@ -1,0 +1,26 @@
+    PID STAT     ELAPSED CMD
+-rw-rw-r-- 1 dish dish 558 Aug 25 17:17 /home/dish/Dev/Work/XPN/tron-payments/tmp-api-test.txt
+-rw-rw-r-- 1 dish dish  29 Aug 25 17:22 /home/dish/Dev/Work/XPN/tron-payments/tmp-ps-check.txt
+-rw-rw-r-- 1 dish dish 497 Aug 25 17:21 /home/dish/Dev/Work/XPN/tron-payments/tmp-test-results.txt
+=== Pass/fail summary (2026-08-25) ===
+
+API tests (@tron-payments/api): PASS
+  Test Files  5 passed (5)
+  Tests       31 passed (31)
+  Duration    ~38s
+
+Web tests (@tron-payments/web): PASS
+  Test Files  1 passed (1)
+  Tests       4 passed (4)
+  WEB_TEST_EXIT:0
+
+API lint (tsc --noEmit): PASS
+  API_LINT_EXIT:0
+
+Web lint (tsc --noEmit): PASS
+  WEB_LINT_EXIT:0
+
+apps/signer cleanup: already absent / removed (rm_signer_exit:0)
+
+No TypeScript/test failures; no code fixes required.
+=== COMPLETE ===
