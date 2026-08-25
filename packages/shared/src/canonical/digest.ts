@@ -1,5 +1,5 @@
-import { createHash } from "node:crypto";
 import type { CanonicalPaymentDigest } from "../types/payment-request.js";
+import { sha256Hex } from "../sha256.js";
 
 function sortValue(value: unknown): unknown {
   if (Array.isArray(value)) {
@@ -23,8 +23,7 @@ export function canonicalSerialize(value: unknown): string {
 }
 
 export function hashCanonicalPayload(digest: CanonicalPaymentDigest): string {
-  const serialized = canonicalSerialize(digest);
-  return createHash("sha256").update(serialized, "utf8").digest("hex");
+  return sha256Hex(canonicalSerialize(digest));
 }
 
 export function buildCanonicalDigest(
@@ -55,6 +54,6 @@ export function buildDigestHash(input: CanonicalPaymentDigest): {
 } {
   const digest = buildCanonicalDigest(input);
   const serialized = canonicalSerialize(digest);
-  const hash = createHash("sha256").update(serialized, "utf8").digest("hex");
+  const hash = sha256Hex(serialized);
   return { digest, hash, serialized };
 }
