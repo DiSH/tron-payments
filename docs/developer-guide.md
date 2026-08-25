@@ -16,8 +16,9 @@ devbox run install
 cp .env.example .env
 devbox run docker:up          # Postgres + API + Web; API runs migrations
 devbox run seed:users         # optional dev users (from host, DATABASE_URL=localhost)
-devbox run dev:signer         # Ledger client on the host — not in Docker
 ```
+
+Ledger uses WebHID in the browser (Chrome/Edge, HTTPS or localhost). No separate signer process.
 
 `devbox run dev` is the same stack as `docker:up`, but attached (logs in the foreground).
 
@@ -42,17 +43,16 @@ docker volume rm tron-payments_api_node_modules tron-payments_web_node_modules
 docker compose up -d
 ```
 
-Production migrate + start: see [README](../README.md#production). First-time TLS: set `CERTBOT_EMAIL` and run `bash scripts/init-letsencrypt.sh` (or `devbox run docker:prod:cert`). nginx terminates HTTPS for `fboardpagec.com` and reverse-proxies `/api` and `/health`; the SPA is built with `VITE_API_BASE_URL=https://fboardpagec.com`. Compose sets `CORS_ORIGIN=https://fboardpagec.com`. Local signer against production: `API_BASE_URL=https://fboardpagec.com`.
+Production migrate + start: see [README](../README.md#production). First-time TLS: set `CERTBOT_EMAIL` and run `bash scripts/init-letsencrypt.sh` (or `devbox run docker:prod:cert`). nginx terminates HTTPS for `fboardpagec.com` and reverse-proxies `/api` and `/health`; the SPA is built with `VITE_API_BASE_URL=https://fboardpagec.com`. Compose sets `CORS_ORIGIN=https://fboardpagec.com`.
 
-The signer client is never containerized (Ledger USB/HID).
+Ledger access is browser WebHID (secure context required).
 
 ## Monorepo
 
 | Workspace | Path | Purpose |
 |---|---|---|
 | `@tron-payments/api` | `apps/api` | Fastify backend |
-| `@tron-payments/web` | `apps/web` | React frontend |
-| `@tron-payments/signer` | `apps/signer` | Local Ledger client |
+| `@tron-payments/web` | `apps/web` | React frontend + WebHID Ledger |
 | `@tron-payments/shared` | `packages/shared` | Shared types and utilities |
 
 ## Development Order
@@ -60,7 +60,6 @@ The signer client is never containerized (Ledger USB/HID).
 1. Ledger POC on testnet (mandatory gate)
 2. `packages/shared` — canonical hash, state machine, TRON helpers
 3. `apps/api` — full backend
-4. `apps/signer` — Ledger integration
-5. `apps/web` — UI
+4. `apps/web` — UI + WebHID Ledger module
 
 See [AGENTS.md](../AGENTS.md) for agent instructions and [project bible](../.kiro/steering/project-bible.md) for full requirements.

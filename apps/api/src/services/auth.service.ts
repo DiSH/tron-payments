@@ -1,13 +1,16 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
+import { addressesEqual, isValidTronAddress, type Role } from "@tron-payments/shared";
+import { TronWeb } from "tronweb";
+import { randomBytes } from "node:crypto";
 import { db } from "../db/client.js";
-import { users } from "../db/schema/index.js";
-import type { Role } from "@tron-payments/shared";
+import { authChallenges, users } from "../db/schema/index.js";
+import type { AuditService } from "./audit.service.js";
 
 export interface AuthUser {
   id: string;
-  email: string;
+  email: string | null;
   roles: Role[];
   signerAddress: string | null;
 }
@@ -24,6 +27,9 @@ export interface TokenPayload {
   iat: number;
 }
 
+const CHALLENGE_TTL_MS = 5 * 60_000;
+const CHALLENGE_DOMAIN = "TRON Payments login";
+
 /** Reject JWTs issued before credentials_updated_at (second precision). */
 export function isTokenStale(
   iat: number | undefined,
@@ -33,8 +39,16 @@ export function isTokenStale(
   return iat < Math.floor(credentialsUpdatedAt.getTime() / 1000);
 }
 
+export function buildLedgerChallengeMessage(nonce: string, issuedAtIso: string): string {
+  // Keep under Ledger 255-byte personal-message limit.
+  return `${CHALLENGE_DOMAIN}\n${nonce}\n${issuedAtIso}`;
+}
+
 export class AuthService {
-  constructor(private readonly jwtSecret: string) {}
+  constructor(
+    private readonly jwtSecret: string,
+    private readonly audit?: AuditService,
+  ) {}
 
   async register(input: {
     email: string;
@@ -63,19 +77,129 @@ export class AuthService {
       .where(eq(users.email, email.toLowerCase()))
       .limit(1);
 
-    if (!user || user.disabledAt) throw new Error("Invalid credentials");
+    if (!user || user.disabledAt || !user.passwordHash) {
+      throw new Error("Invalid credentials");
+    }
 
     const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) throw new Error("Invalid credentials");
 
     const authUser = this.toAuthUser(user);
-    const token = jwt.sign(
-      { sub: authUser.id, email: authUser.email, roles: authUser.roles },
-      this.jwtSecret,
-      { expiresIn: "8h" },
+    return { token: this.issueToken(authUser), user: authUser };
+  }
+
+  async createLedgerChallenge(): Promise<{
+    challengeId: string;
+    message: string;
+    expiresAt: string;
+  }> {
+    const nonce = randomBytes(16).toString("hex");
+    const issuedAt = new Date();
+    const expiresAt = new Date(issuedAt.getTime() + CHALLENGE_TTL_MS);
+    const message = buildLedgerChallengeMessage(nonce, issuedAt.toISOString());
+
+    const [row] = await db
+      .insert(authChallenges)
+      .values({ message, expiresAt })
+      .returning();
+
+    return {
+      challengeId: row.id,
+      message: row.message,
+      expiresAt: row.expiresAt.toISOString(),
+    };
+  }
+
+  async verifyLedgerLogin(input: {
+    challengeId: string;
+    signature: string;
+    expectedAddress?: string;
+  }): Promise<{ token: string; user: AuthUser; created: boolean }> {
+    const [challenge] = await db
+      .select()
+      .from(authChallenges)
+      .where(eq(authChallenges.id, input.challengeId))
+      .limit(1);
+
+    if (!challenge || challenge.consumedAt) {
+      throw new Error("Invalid or consumed challenge");
+    }
+    if (challenge.expiresAt <= new Date()) {
+      throw new Error("Challenge expired");
+    }
+
+    const recovered = await recoverAddressFromPersonalMessage(
+      challenge.message,
+      input.signature,
+    );
+    if (!isValidTronAddress(recovered)) {
+      throw new Error("Could not recover signer address");
+    }
+    if (
+      input.expectedAddress &&
+      !addressesEqual(recovered, input.expectedAddress)
+    ) {
+      throw new Error("Recovered address does not match Ledger address");
+    }
+
+    const [consumed] = await db
+      .update(authChallenges)
+      .set({ consumedAt: new Date() })
+      .where(
+        and(eq(authChallenges.id, challenge.id), isNull(authChallenges.consumedAt)),
+      )
+      .returning();
+    if (!consumed) {
+      throw new Error("Invalid or consumed challenge");
+    }
+
+    const existing = await this.findActiveBySignerAddress(recovered);
+    if (existing?.disabledAt) {
+      throw new Error("Account disabled");
+    }
+
+    let user = existing;
+    let created = false;
+    if (!user) {
+      const [inserted] = await db
+        .insert(users)
+        .values({
+          email: null,
+          passwordHash: null,
+          roles: [],
+          signerAddress: recovered,
+        })
+        .returning();
+      user = inserted;
+      created = true;
+      await this.audit?.record(
+        "USER_CREATED_LEDGER",
+        { actorUserId: inserted.id },
+        {
+          after: {
+            id: inserted.id,
+            email: null,
+            roles: [],
+            signerAddress: recovered,
+          },
+        },
+      );
+    }
+
+    const authUser = this.toAuthUser(user);
+    await this.audit?.record(
+      "AUTH_LEDGER_LOGIN",
+      { actorUserId: authUser.id },
+      {
+        after: {
+          userId: authUser.id,
+          signerAddress: authUser.signerAddress,
+          created,
+        },
+      },
     );
 
-    return { token, user: authUser };
+    return { token: this.issueToken(authUser), user: authUser, created };
   }
 
   verifyToken(token: string): TokenPayload {
@@ -120,6 +244,31 @@ export class AuthService {
     return user.roles.includes(role) || user.roles.includes("admin");
   }
 
+  private issueToken(user: AuthUser): string {
+    return jwt.sign(
+      {
+        sub: user.id,
+        email: user.email ?? user.signerAddress ?? "",
+        roles: user.roles,
+      },
+      this.jwtSecret,
+      { expiresIn: "8h" },
+    );
+  }
+
+  private async findActiveBySignerAddress(address: string) {
+    const rows = await db
+      .select()
+      .from(users)
+      .where(isNull(users.disabledAt));
+    return (
+      rows.find(
+        (row) =>
+          row.signerAddress != null && addressesEqual(row.signerAddress, address),
+      ) ?? null
+    );
+  }
+
   private toAuthUser(user: typeof users.$inferSelect): AuthUser {
     return {
       id: user.id,
@@ -136,4 +285,14 @@ export class AuthService {
       credentialsUpdatedAt: user.credentialsUpdatedAt,
     };
   }
+}
+
+async function recoverAddressFromPersonalMessage(
+  message: string,
+  signature: string,
+): Promise<string> {
+  const tronWeb = new TronWeb({ fullHost: "https://api.trongrid.io" });
+  const sig = signature.startsWith("0x") ? signature : `0x${signature}`;
+  const recovered = await tronWeb.trx.verifyMessageV2(message, sig);
+  return String(recovered);
 }

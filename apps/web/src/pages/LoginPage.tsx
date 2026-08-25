@@ -1,10 +1,12 @@
 import { FormEvent, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+import { isWebHidSupported, signPersonalMessage } from "../ledger/tron-webhid";
 
 export function LoginPage() {
-  const { login, user, loading } = useAuth();
+  const { login, loginWithLedger, user, loading } = useAuth();
   const [error, setError] = useState<string | null>(null);
+  const [ledgerBusy, setLedgerBusy] = useState(false);
 
   if (!loading && user) return <Navigate to="/" replace />;
 
@@ -19,6 +21,26 @@ export function LoginPage() {
     }
   }
 
+  async function onLedgerLogin() {
+    setError(null);
+    setLedgerBusy(true);
+    try {
+      if (!isWebHidSupported()) {
+        throw new Error(
+          "WebHID is not supported in this browser. Use Chrome or Edge over HTTPS/localhost.",
+        );
+      }
+      await loginWithLedger(async (message) => {
+        const signed = await signPersonalMessage(message);
+        return { signature: signed.signature, address: signed.address };
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLedgerBusy(false);
+    }
+  }
+
   return (
     <div
       style={{
@@ -28,8 +50,7 @@ export function LoginPage() {
         fontFamily: "system-ui, sans-serif",
       }}
     >
-      <form
-        onSubmit={onSubmit}
+      <div
         style={{
           width: 360,
           display: "grid",
@@ -41,16 +62,26 @@ export function LoginPage() {
       >
         <h1>TRON Payments</h1>
         {error && <p style={{ color: "crimson" }}>{error}</p>}
-        <label>
-          Email
-          <input name="email" type="email" required style={{ width: "100%" }} />
-        </label>
-        <label>
-          Password
-          <input name="password" type="password" required style={{ width: "100%" }} />
-        </label>
-        <button type="submit">Sign in</button>
-      </form>
+        <form onSubmit={onSubmit} style={{ display: "grid", gap: "0.75rem" }}>
+          <label>
+            Email
+            <input name="email" type="email" required style={{ width: "100%" }} />
+          </label>
+          <label>
+            Password
+            <input name="password" type="password" required style={{ width: "100%" }} />
+          </label>
+          <button type="submit">Sign in</button>
+        </form>
+        <div style={{ textAlign: "center", color: "#888" }}>or</div>
+        <button type="button" onClick={onLedgerLogin} disabled={ledgerBusy}>
+          {ledgerBusy ? "Waiting for Ledger…" : "Sign in with Ledger"}
+        </button>
+        <p style={{ color: "#666", fontSize: 13, margin: 0 }}>
+          First Ledger login creates an account. An admin must grant the Signer role
+          and add your address to treasury settings before you can sign payments.
+        </p>
+      </div>
     </div>
   );
 }

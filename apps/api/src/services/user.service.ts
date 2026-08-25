@@ -20,7 +20,7 @@ export class UserServiceError extends Error {
 
 export interface AdminUser {
   id: string;
-  email: string;
+  email: string | null;
   roles: Role[];
   signerAddress: string | null;
   createdAt: Date;
@@ -72,13 +72,13 @@ export function normalizeSignerAddress(
 
 export function auditUserSnapshot(user: {
   id: string;
-  email: string;
+  email: string | null;
   roles: unknown;
   signerAddress: string | null;
   disabledAt?: Date | null;
 }): {
   id: string;
-  email: string;
+  email: string | null;
   roles: unknown;
   signerAddress: string | null;
   disabledAt: string | null;
@@ -214,7 +214,11 @@ export class UserService {
 
   async update(
     id: string,
-    input: { roles?: unknown; signerAddress?: string | null },
+    input: {
+      roles?: unknown;
+      signerAddress?: string | null;
+      email?: string | null;
+    },
     context: AuditContext,
   ): Promise<AdminUser> {
     const existing = await this.requireActive(id);
@@ -224,6 +228,21 @@ export class UserService {
       input.signerAddress !== undefined
         ? normalizeSignerAddress(input.signerAddress)
         : existing.signerAddress;
+    const nextEmail =
+      input.email !== undefined
+        ? input.email === null || input.email.trim() === ""
+          ? null
+          : normalizeEmail(input.email)
+        : existing.email;
+
+    if (nextEmail) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(nextEmail)) {
+        throw new UserServiceError("Valid email is required", 400);
+      }
+      if (nextEmail !== existing.email) {
+        await this.assertEmailAvailable(nextEmail);
+      }
+    }
 
     const otherActiveAdminCount = await this.countOtherActiveAdmins(id);
     assertCanChangeRoles({
@@ -238,6 +257,7 @@ export class UserService {
       .set({
         roles: nextRoles,
         signerAddress: nextAddress,
+        email: nextEmail,
       })
       .where(and(eq(users.id, id), isNull(users.disabledAt)))
       .returning();

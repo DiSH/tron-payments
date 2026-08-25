@@ -11,6 +11,8 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
+    "@ledgerhq/hw-app-trx": "^6.36.6",
+    "@ledgerhq/hw-transport-webhid": "^6.36.0",
     "@tron-payments/shared": "*",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

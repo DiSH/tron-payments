@@ -89,7 +89,7 @@ describe("validateCreateInput", () => {
       validateCreateInput({
         email: "a@b.co",
         password: "long-enough-password",
-        roles: ["signer_a"],
+        roles: ["signer"],
         signerAddress: "not-an-address",
       }),
     ).toThrow("Invalid signer address");

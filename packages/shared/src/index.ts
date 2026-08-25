@@ -18,9 +18,7 @@ export type PaymentRequestStatus = (typeof PAYMENT_REQUEST_STATUSES)[number];
 
 export const ROLES = [
   "requester",
-  "signer_a",
-  "signer_b",
-  "signer_c",
+  "signer",
   "executor",
   "admin",
   "auditor",

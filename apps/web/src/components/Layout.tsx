@@ -1,5 +1,6 @@
 import { Link, Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+import { displayUserLabel } from "../lib/api";
 
 export function Layout() {
   const { user, logout, hasRole } = useAuth();
@@ -25,7 +26,9 @@ export function Layout() {
           {hasRole("admin") && <Link to="/admin/treasury">Treasury settings</Link>}
           <Link to="/audit">Audit</Link>
         </nav>
-        <span style={{ color: "#666" }}>{user?.email}</span>
+        <span style={{ color: "#666" }}>
+          {user ? displayUserLabel(user) : ""}
+        </span>
         <button type="button" onClick={logout}>
           Logout
         </button>

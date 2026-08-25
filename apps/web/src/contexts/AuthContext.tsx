@@ -11,6 +11,12 @@ interface AuthContextValue {
   user: AuthUser | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
+  loginWithLedger: (
+    signChallenge: (message: string) => Promise<{
+      signature: string;
+      address: string;
+    }>,
+  ) => Promise<void>;
   logout: () => void;
   hasRole: (...roles: string[]) => boolean;
 }
@@ -40,6 +46,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(result.user);
   };
 
+  const loginWithLedger = async (
+    signChallenge: (message: string) => Promise<{
+      signature: string;
+      address: string;
+    }>,
+  ) => {
+    const challenge = await api.createLedgerChallenge();
+    const signed = await signChallenge(challenge.message);
+    const result = await api.verifyLedgerLogin({
+      challengeId: challenge.challengeId,
+      signature: signed.signature,
+      address: signed.address,
+    });
+    localStorage.setItem("auth_token", result.token);
+    setUser(result.user);
+  };
+
   const logout = () => {
     localStorage.removeItem("auth_token");
     setUser(null);
@@ -52,7 +75,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, hasRole }}>
+    <AuthContext.Provider
+      value={{ user, loading, login, loginWithLedger, logout, hasRole }}
+    >
       {children}
     </AuthContext.Provider>
   );

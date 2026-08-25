@@ -33,7 +33,7 @@ Internal corporate tool for remote **2-of-3 multisig USDT TRC-20 payments** from
 | Actor | Description |
 |---|---|
 | **Finance Requester** | Creates USDT payment requests |
-| **Signer A / B / C** | Reviews and signs with personal Ledger |
+| **Signer** | Reviews and signs with personal Ledger (WebHID) |
 | **Executor** | Triggers broadcast after threshold (may overlap with signers) |
 | **Admin** | User management, app configuration |
 | **Auditor** | Read-only access to requests and audit trail |
@@ -44,9 +44,7 @@ Internal corporate tool for remote **2-of-3 multisig USDT TRC-20 payments** from
 flowchart TB
   subgraph actors [Actors]
     Req[FinanceRequester]
-    SA[SignerA]
-    SB[SignerB]
-    SC[SignerC]
+    SA[Signer]
     Exec[Executor]
     Admin[Admin]
     Audit[Auditor]
@@ -64,8 +62,6 @@ flowchart TB
 
   Req --> SYS
   SA --> SYS
-  SB --> SYS
-  SC --> SYS
   Exec --> SYS
   Admin --> SYS
   Audit --> SYS
@@ -74,8 +70,6 @@ flowchart TB
   SYS --> OIDC
   SYS --> LE
   SA --> Ledger
-  SB --> Ledger
-  SC --> Ledger
   TRON --> Scan
 ```
 
@@ -85,8 +79,8 @@ flowchart TB
 |---|---|---|
 | **TRON Mainnet RPC** | Read/write node access | Permissions, balances, sign weight, broadcast |
 | **TronScan** | Read-only explorer links | Post-broadcast confirmation URLs |
-| **Corporate OIDC** | Authentication (or email+TOTP for MVP) | No seed-based auth |
-| **Ledger devices** | Signing hardware | Accessed only by local signer client via USB/HID |
+| **Corporate OIDC** | Authentication (or email+password / Ledger login for MVP) | No seed-based auth |
+| **Ledger devices** | Signing hardware | Accessed by Web SPA via WebHID (secure context) |
 | **Let's Encrypt** | TLS certificates (production) | HTTP-01 via nginx webroot; certbot sidecar in production Compose |
 
 ---
@@ -96,12 +90,8 @@ flowchart TB
 ```mermaid
 flowchart TB
   subgraph browser [User Browser]
-    WEB[WebSPA_React_Vite]
-  end
-
-  subgraph signerMachine [Signer Machine — local]
-    SIGN[SignerClient_Node_ElectronOrCLI]
-    LED[Ledger_USB_HID]
+    WEB[WebSPA_React_Vite_WebHID]
+    LED[Ledger_USB]
   end
 
   subgraph server [Server — Docker Compose]
@@ -114,10 +104,8 @@ flowchart TB
   TRON[TRON_RPC]
 
   WEB -->|HTTPS_same_origin| NGINX
-  SIGN -->|HTTPS_JSON| NGINX
+  WEB -->|WebHID| LED
   NGINX -->|"/api /health"| API
-  SIGN -->|USB_HID| LED
-  WEB -->|deep_link_or_localhost| SIGN
   API --> PG
   API --> TRON
   WORK --> PG
@@ -128,10 +116,9 @@ flowchart TB
 
 | Container | Technology | Responsibility |
 |---|---|---|
-| **Web SPA** | React 18, TypeScript, Vite | Dashboard, request forms, signing queue, audit views. Production image is nginx serving the SPA and reverse-proxying `/api` and `/health`. |
-| **API Server** | Fastify, TypeScript, Drizzle | Auth, RBAC, request lifecycle, tx builder, signature verifier, config validation |
-| **Signer Client** | Node/Electron or CLI | Local Ledger interaction, payload re-validation, signature submission |
-| **PostgreSQL** | Postgres 16 | Payment requests, signatures, audit events, job queue |
+| **Web SPA** | React 18, TypeScript, Vite, WebHID | Dashboard, request forms, Ledger connect/login/sign, audit views. Production image is nginx serving the SPA and reverse-proxying `/api` and `/health`. |
+| **API Server** | Fastify, TypeScript, Drizzle | Auth (password + Ledger challenge), RBAC, request lifecycle, tx builder, signature verifier, config validation |
+| **PostgreSQL** | Postgres 16 | Payment requests, signatures, audit events, job queue, auth challenges |
 | **Broadcast Worker** | Node process (in API or separate) | Idempotent broadcast, confirmation polling |
 
 ### Deployment topology
@@ -141,15 +128,18 @@ flowchart TB
 | Local | `docker-compose.yml` | Postgres 16 + API (`tsx watch`) + Web (Vite). Source bind-mounted for hot reload. |
 | Production | `docker-compose.prod.yml` | API + nginx on `https://fboardpagec.com` (TLS via Let's Encrypt). nginx serves the SPA and reverse-proxies `/api` and `/health`. API is not published on the host. PostgreSQL is **external**; the API connects via `DATABASE_URL`. Certbot is a renewal sidecar, not a C4 application container. |
 
-Images live in `apps/api/Dockerfile` and `apps/web/Dockerfile` (targets `development` / `production`). The signer client is **never containerized** — Ledger USB/HID stays on the signer machine (`devbox run dev:signer`).
+Images live in `apps/api/Dockerfile` and `apps/web/Dockerfile` (targets `development` / `production`). Ledger access is browser WebHID only — requires HTTPS (or localhost).
 
 ### Forbidden
 
-- Backend or Web UI accessing Ledger hardware
+- Backend accessing Ledger hardware
 - Private keys anywhere in the system
-- Browser-based Ledger signing (WebHID in remote/hosted SPA)
 - Arbitrary smart contract calls
 - Standalone key management service
+
+### Allowed (approved)
+
+- Browser WebHID Ledger signing/login in the hosted SPA on user gesture; always close transport; never log APDU/secrets
 
 ---
 
@@ -202,24 +192,10 @@ src/
 │   ├── AdminUsers.tsx
 │   └── AuditLog.tsx
 ├── components/
+├── ledger/                # WebHID Ledger (getAddress, signPersonalMessage, signTxHash)
 ├── hooks/
 ├── services/              # API client
 └── lib/
-```
-
-### Signer (`apps/signer`)
-
-```text
-src/
-├── cli.ts or main.ts      # Entry point
-├── ledger/
-│   ├── transport.ts       # WebHID / node-hid
-│   ├── tron-signer.ts     # @ledgerhq/hw-app-trx
-│   └── device-errors.ts
-├── validation/
-│   └── payload-validator.ts
-├── api-client.ts
-└── review-ui.ts           # Full-screen terminal or Electron window
 ```
 
 ### Shared (`packages/shared`)
@@ -257,7 +233,7 @@ Admin → Web UI /admin/users
 Admin → Web UI /admin/treasury
   → GET /api/admin/treasury-config/discover?address=T...
   → API reads account.active_permission from TRON RPC
-  → Admin selects Active Permission and maps keys → Signer A/B/C
+  → Admin selects Active Permission and chooses three Signer keys
   → PUT /api/admin/treasury-config
   → API re-reads chain, validates keys/weights/TriggerSmartContract
   → Upsert treasury_settings + app_config_state
@@ -283,16 +259,23 @@ Requester → Web UI form
 
 ```text
 Signer → Web UI checkbox + "Sign with Ledger"
-  → POST /api/payment-requests/:id/signing-session (one-time token)
-  → Web opens local signer client (localhost:3847 or custom protocol)
-  → Signer GET /api/payment-requests/:id/signing-payload
-  → Local validation + full-screen review
-  → Ledger signs raw transaction bytes
-  → Local signature recovery check
+  → GET /api/payment-requests/:id/signing-payload
+  → WebHID signTransactionHash on Ledger
   → POST /api/payment-requests/:id/signatures
   → API verifies ECDSA + getSignWeight
   → Status: PARTIALLY_SIGNED or READY_TO_BROADCAST
   → AuditEvent: SIGNATURE_ADDED
+```
+
+### Ledger Login
+
+```text
+Guest → "Sign in with Ledger"
+  → POST /api/auth/ledger/challenge
+  → WebHID signPersonalMessage
+  → POST /api/auth/ledger/verify
+  → Find or create user by signer_address (roles empty until Admin assigns)
+  → JWT issued
 ```
 
 ### Broadcast
@@ -314,6 +297,8 @@ Executor → Web UI final confirmation
 
 ```text
 POST   /api/auth/login
+POST   /api/auth/ledger/challenge
+POST   /api/auth/ledger/verify
 GET    /api/me
 
 GET    /api/admin/users
@@ -364,8 +349,7 @@ GET    /health/tron-rpc
 | API endpoint | — | `apps/api/src/routes/` | — | migration if needed |
 | Business logic | `apps/web/src/services/` | `apps/api/src/services/` | `packages/shared/` | — |
 | TRON encoding | — | uses shared | `packages/shared/src/tron/` | — |
-| Ledger interaction | — | **never** | — | — |
-| Ledger interaction | `apps/signer/src/ledger/` | — | — | — |
+| Ledger interaction | `apps/web/src/ledger/` | **never** | — | — |
 | State machine | — | uses shared | `packages/shared/src/state-machine/` | — |
 | Audit | — | `apps/api/src/services/audit.service.ts` | — | `audit_events` table |
 | Schema change | — | — | — | `apps/api/src/db/migrations/` append-only |
@@ -380,7 +364,7 @@ GET    /health/tron-rpc
 [ ] project-bible.md updated if invariants changed
 [ ] .cursor/rules/architecture-c4.mdc updated if guardrails changed
 [ ] No private keys introduced anywhere
-[ ] Ledger access remains local-only in apps/signer
+[ ] Ledger access remains WebHID in apps/web only (never backend)
 [ ] Canonical payload schema change has migration plan
 [ ] Audit events for new mutating operations
 [ ] Tests for new behavior

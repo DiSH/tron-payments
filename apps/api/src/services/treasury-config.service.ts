@@ -49,7 +49,7 @@ export interface SaveTreasuryConfigInput {
   treasuryAddress: string;
   activePermissionId: number;
   signers: Array<{
-    role: "signer_a" | "signer_b" | "signer_c";
+    role: "signer";
     label: string;
     address: string;
   }>;
@@ -65,8 +65,6 @@ export class TreasuryConfigError extends Error {
     this.name = "TreasuryConfigError";
   }
 }
-
-const REQUIRED_ROLES = ["signer_a", "signer_b", "signer_c"] as const;
 
 export class TreasuryConfigService {
   private readonly policy: PolicyConfig;
@@ -187,16 +185,11 @@ export class TreasuryConfigService {
       throw new TreasuryConfigError("Invalid treasury address");
     }
 
-    const roles = input.signers.map((s) => s.role);
-    for (const required of REQUIRED_ROLES) {
-      if (!roles.includes(required)) {
-        throw new TreasuryConfigError(
-          `Missing required signer role: ${required}`,
-        );
-      }
-    }
     if (input.signers.length !== 3) {
-      throw new TreasuryConfigError("Exactly three signers (A/B/C) are required");
+      throw new TreasuryConfigError("Exactly three signers are required");
+    }
+    if (input.signers.some((s) => s.role !== "signer")) {
+      throw new TreasuryConfigError('Each signer must have role "signer"');
     }
 
     const addresses = input.signers.map((s) => s.address);
@@ -228,19 +221,19 @@ export class TreasuryConfigService {
       );
     }
 
-    const signers: TreasurySignerRow[] = input.signers.map((s) => {
+    const signers: TreasurySignerRow[] = input.signers.map((s, index) => {
       const onChain = permission.keys.find((k) =>
         addressesEqual(k.address, s.address),
       );
       if (!onChain) {
         throw new TreasuryConfigError(
-          `Signer ${s.label || s.role} address not found in selected permission`,
+          `Signer ${s.label || s.address} address not found in selected permission`,
           422,
         );
       }
       return {
-        role: s.role,
-        label: s.label.trim() || defaultLabel(s.role),
+        role: "signer" as const,
+        label: s.label.trim() || defaultLabel(index),
         address: s.address,
         weight: onChain.weight,
       };
@@ -363,15 +356,8 @@ export class TreasuryConfigService {
   }
 }
 
-function defaultLabel(role: SignerConfig["role"]): string {
-  switch (role) {
-    case "signer_a":
-      return "Finance A";
-    case "signer_b":
-      return "Finance B";
-    case "signer_c":
-      return "Finance C";
-  }
+function defaultLabel(index: number): string {
+  return `Signer ${index + 1}`;
 }
 
 function normalizeOperations(operations: string | string[] | undefined): string[] {

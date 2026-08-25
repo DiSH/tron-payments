@@ -10,4 +10,7 @@ export default defineConfig({
       usePolling: process.env.CHOKIDAR_USEPOLLING === "true",
     },
   },
+  optimizeDeps: {
+    include: ["@ledgerhq/hw-transport-webhid", "@ledgerhq/hw-app-trx"],
+  },
 });

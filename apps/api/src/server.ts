@@ -25,7 +25,7 @@ export async function buildApp() {
   const env = loadEnv();
   const tronRpc = createTronRpcService(env.TRON_RPC_URL, env.TRON_RPC_API_KEY);
   const audit = new AuditService();
-  const auth = new AuthService(env.JWT_SECRET);
+  const auth = new AuthService(env.JWT_SECRET, audit);
   const userAdmin = new UserService(audit);
   const treasuryConfig = new TreasuryConfigService(env, tronRpc, audit);
   const paymentRequests = new PaymentRequestService(tronRpc, audit);

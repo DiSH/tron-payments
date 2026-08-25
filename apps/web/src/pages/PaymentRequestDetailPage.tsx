@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { api, copyToClipboard } from "../lib/api";
+import { signTransactionHash } from "../ledger/tron-webhid";
+import { ConnectLedgerButton } from "../components/ConnectLedgerButton";
 
 export function PaymentRequestDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -9,6 +11,7 @@ export function PaymentRequestDetailPage() {
   const [record, setRecord] = useState<Record<string, unknown> | null>(null);
   const [weight, setWeight] = useState<Record<string, unknown> | null>(null);
   const [reviewConfirmed, setReviewConfirmed] = useState(false);
+  const [signing, setSigning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -23,12 +26,11 @@ export function PaymentRequestDetailPage() {
   }, [id]);
 
   if (!id) return null;
-  // Narrow for nested handlers: closures do not inherit useParams narrowing.
   const paymentRequestId: string = id;
-  if (error) return <p style={{ color: "crimson" }}>{error}</p>;
+  if (error && !record) return <p style={{ color: "crimson" }}>{error}</p>;
   if (!record) return <p>Loading…</p>;
 
-  const canSign = hasRole("signer_a", "signer_b", "signer_c");
+  const canSign = hasRole("signer");
   const canBroadcast = hasRole("executor");
 
   async function handleSign() {
@@ -36,17 +38,36 @@ export function PaymentRequestDetailPage() {
       setError("Confirm independent review before signing");
       return;
     }
+    if (!user?.signerAddress) {
+      setError("Your account has no registered signer address");
+      return;
+    }
     setError(null);
+    setMessage(null);
+    setSigning(true);
     try {
-      const session = await api.createSigningSession(paymentRequestId);
-      const authToken = localStorage.getItem("auth_token");
-      const url = new URL(session.signerClientUrl);
-      url.searchParams.set("authToken", authToken ?? "");
-      url.searchParams.set("expectedSignerAddress", user?.signerAddress ?? "");
-      window.open(url.toString(), "_blank", "noopener,noreferrer");
-      setMessage("Signer client opened. Complete Ledger approval locally.");
+      const payload = await api.getSigningPayload(paymentRequestId);
+      const signed = await signTransactionHash(
+        payload.rawDataHex,
+        user.signerAddress,
+      );
+      await api.submitSignature(paymentRequestId, {
+        signature: signed.signature,
+        txId: payload.txId,
+        payloadHash: payload.payloadHash,
+        independentReviewConfirmed: true,
+      });
+      setMessage("Signature submitted and verified.");
+      const [refreshed, w] = await Promise.all([
+        api.getPaymentRequest(paymentRequestId),
+        api.getSignWeight(paymentRequestId).catch(() => null),
+      ]);
+      setRecord(refreshed);
+      setWeight(w);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSigning(false);
     }
   }
 
@@ -71,6 +92,8 @@ export function PaymentRequestDetailPage() {
       <p>
         Status: <strong>{String(record.status)}</strong>
       </p>
+
+      <ConnectLedgerButton />
 
       <section style={{ display: "grid", gap: "0.5rem", marginBottom: "1.5rem" }}>
         <div>
@@ -117,10 +140,10 @@ export function PaymentRequestDetailPage() {
             <button
               type="button"
               style={{ marginTop: "0.75rem" }}
-              disabled={!reviewConfirmed}
+              disabled={!reviewConfirmed || signing}
               onClick={handleSign}
             >
-              Sign with Ledger
+              {signing ? "Waiting for Ledger…" : "Sign with Ledger"}
             </button>
           </section>
         )}

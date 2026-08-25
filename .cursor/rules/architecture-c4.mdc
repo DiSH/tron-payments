@@ -12,48 +12,48 @@ Canonical reference: **`docs/architecture.md`**. This rule is a session-level su
 | Actor | Access |
 |---|---|
 | Finance Requester | Create payment requests |
-| Signer A / B / C | Review + sign with Ledger |
+| Signer | Review + sign with Ledger (WebHID) |
 | Executor | Broadcast after threshold |
 | Admin | Users, config, reference data |
 | Auditor | Read-only audit access |
 
-External: TRON Mainnet RPC, TronScan, Corporate OIDC (or email+TOTP), Ledger hardware wallets, Let's Encrypt (production TLS).
+External: TRON Mainnet RPC, TronScan, Corporate OIDC (or email+password / Ledger login), Ledger hardware wallets, Let's Encrypt (production TLS).
 
 ## C2 — Containers
 
 ```mermaid
 flowchart TB
-  WEB[WebSPA_React] --> NGINX[nginx_TLS]
+  WEB[WebSPA_React_WebHID] --> NGINX[nginx_TLS]
+  WEB -->|WebHID| LED[Ledger_USB]
   NGINX --> API[API_Fastify]
-  SIGN[SignerClient_Local] --> NGINX
-  SIGN --> LED[Ledger_USB_HID]
-  WEB -->|localhost/deep_link| SIGN
   API --> PG[(PostgreSQL)]
   API --> TRON[TRON_RPC]
 ```
 
 | Container | Must stay |
 |---|---|
-| Web SPA | React + Vite; thin pages; API client in services/. Production image: nginx (SPA + `/api` reverse proxy, TLS). |
-| API | Fastify; Drizzle; no signing capability |
-| Signer Client | Local only; Ledger via USB/HID; never on server |
+| Web SPA | React + Vite; thin pages; WebHID Ledger in `src/ledger/`. Production image: nginx (SPA + `/api` reverse proxy, TLS). |
+| API | Fastify; Drizzle; no signing capability; no Ledger access |
 | PostgreSQL | Append-only audit; optimistic locking on requests |
 
-**Forbidden:** backend Ledger access, private keys anywhere, browser Ledger on hosted SPA, arbitrary smart contract calls, raw tx upload via UI.
+**Forbidden:** backend Ledger access, private keys anywhere, arbitrary smart contract calls, raw tx upload via UI.
+
+**Allowed:** browser WebHID Ledger access in the hosted SPA on user gesture only (secure context: HTTPS or localhost).
 
 ## C3 — Component Map
 
-| Domain | API | Web | Signer | Shared |
-|---|---|---|---|---|
-| Auth/RBAC | `routes/auth.ts` | login pages | token for signing session | types |
-| Users | `services/user.service.ts`, admin user routes | `pages/AdminUsersPage.tsx` | — | — |
-| Payment requests | `routes/payment-requests.ts`, `services/payment-request.service.ts` | `pages/NewPaymentRequest.tsx`, `PaymentRequestDetail.tsx` | — | state-machine |
-| Transaction build | `services/transaction-builder.service.ts` | digest preview | payload re-validation | `tron/`, `canonical/` |
-| Signatures | `routes/signatures.ts`, `services/signature-verifier.service.ts` | sign button + checkbox | `ledger/tron-signer.ts` | — |
-| Broadcast | `routes/broadcast.ts`, `workers/broadcast.worker.ts` | broadcast confirmation | — | — |
-| Treasury | `routes/treasury.ts`, `services/treasury-config.service.ts` | `TreasuryHealth.tsx`, `AdminTreasuryConfigPage.tsx` | — | `tron/` |
-| Audit | `routes/audit.ts`, `services/audit.service.ts` | `AuditLog.tsx` | — | — |
-| Config | `config/` (policy env) + `treasury_settings` DB; admin save validates on-chain | read-only public + admin wizard | local signer config | constants |
+| Domain | API | Web | Shared |
+|---|---|---|---|
+| Auth/RBAC | auth routes (password + Ledger challenge) | login pages | types |
+| Users | `services/user.service.ts`, admin user routes | `pages/AdminUsersPage.tsx` | — |
+| Payment requests | `routes/payment-requests.ts`, `services/payment-request.service.ts` | `pages/NewPaymentRequest.tsx`, `PaymentRequestDetail.tsx` | state-machine |
+| Transaction build | `services/transaction-builder.service.ts` | digest preview | `tron/`, `canonical/` |
+| Signatures | signature routes + verifier | sign button + WebHID | — |
+| Broadcast | broadcast routes + worker | broadcast confirmation | — |
+| Treasury | `routes/treasury.ts`, `services/treasury-config.service.ts` | `TreasuryHealth.tsx`, `AdminTreasuryConfigPage.tsx` | `tron/` |
+| Audit | `routes/audit.ts`, `services/audit.service.ts` | `AuditLog.tsx` | — |
+| Ledger | **never** | `src/ledger/tron-webhid.ts` | — |
+| Config | `config/` + `treasury_settings` DB | public config + admin wizard | constants |
 
 ## C4 — Domain Flows (one-liners)
 
@@ -61,23 +61,25 @@ flowchart TB
 |---|---|
 | **Create request** | Web form → API validates → build USDT transfer tx → store canonical payload → AWAITING_SIGNATURES |
 | **User admin** | Admin Users page → create/update/disable/reset password → AuditEvent USER_* |
-| **Sign** | Web checkbox → signing token → local signer fetches payload → Ledger signs → API verifies ECDSA + getSignWeight |
+| **Ledger login** | Challenge → WebHID signPersonalMessage → verify → find-or-create user → JWT |
+| **Connect Ledger** | WebHID getAddress → compare profile + treasury allowlist + signer role |
+| **Sign** | Web checkbox → GET signing-payload → WebHID signTransactionHash → API verifies ECDSA + getSignWeight |
 | **Broadcast** | Executor confirms → API re-validates all gates → broadcasttransaction → poll confirmation → CONFIRMED |
 | **Audit** | Every mutation → append AuditEvent with before/after state |
 | **Config check** | Startup + admin save + pre-payment → read on-chain permissions → block if mismatch / unconfigured |
 
 ## Where to Put New Code
 
-| Feature | Frontend | Backend | Signer | Shared | DB |
-|---|---|---|---|---|---|
-| New page | `apps/web/src/pages/` | — | — | — | — |
-| API route | — | `apps/api/src/routes/` | — | — | migration |
-| TRON logic | — | via shared | via shared | `packages/shared/src/tron/` | — |
-| Canonical hash | — | via shared | via shared | `packages/shared/src/canonical/` | — |
-| State machine | — | via shared | — | `packages/shared/src/state-machine/` | — |
-| Ledger | — | **never** | `apps/signer/src/ledger/` | — | — |
-| Audit | — | `services/audit.service.ts` | — | — | `audit_events` |
-| Schema | — | — | — | — | migrations append-only |
+| Feature | Frontend | Backend | Shared | DB |
+|---|---|---|---|---|
+| New page | `apps/web/src/pages/` | — | — | — |
+| API route | — | `apps/api/src/routes/` | — | migration |
+| TRON logic | — | via shared | `packages/shared/src/tron/` | — |
+| Canonical hash | — | via shared | `packages/shared/src/canonical/` | — |
+| State machine | — | via shared | `packages/shared/src/state-machine/` | — |
+| Ledger | `apps/web/src/ledger/` | **never** | — | — |
+| Audit | — | `services/audit.service.ts` | — | `audit_events` |
+| Schema | — | — | — | migrations append-only |
 
 ## Architecture Change Gate
 
@@ -99,7 +101,7 @@ flowchart TB
 [ ] project-bible.md updated if invariants changed
 [ ] architecture-c4.mdc updated if guardrails changed
 [ ] No private keys introduced
-[ ] Ledger access remains in apps/signer only
+[ ] Ledger access remains WebHID in apps/web only (never backend)
 [ ] Canonical payload changes have migration plan
 [ ] Audit events for new mutations
 [ ] Tests for new behavior

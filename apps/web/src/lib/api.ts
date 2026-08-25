@@ -2,14 +2,14 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:3000
 
 export interface AuthUser {
   id: string;
-  email: string;
+  email: string | null;
   roles: string[];
   signerAddress: string | null;
 }
 
 export interface AdminUser {
   id: string;
-  email: string;
+  email: string | null;
   roles: string[];
   signerAddress: string | null;
   createdAt: string;
@@ -40,7 +40,7 @@ export interface TreasuryConfigResponse {
     activePermissionName: string;
     threshold: number;
     signers: Array<{
-      role: "signer_a" | "signer_b" | "signer_c";
+      role: "signer";
       label: string;
       address: string;
       weight: number;
@@ -80,11 +80,35 @@ export const api = {
       body: JSON.stringify({ email, password }),
     });
   },
+  createLedgerChallenge() {
+    return apiFetch<{
+      challengeId: string;
+      message: string;
+      expiresAt: string;
+    }>("/api/auth/ledger/challenge", { method: "POST", body: "{}" });
+  },
+  verifyLedgerLogin(input: {
+    challengeId: string;
+    signature: string;
+    address?: string;
+  }) {
+    return apiFetch<{ token: string; user: AuthUser; created: boolean }>(
+      "/api/auth/ledger/verify",
+      {
+        method: "POST",
+        body: JSON.stringify(input),
+      },
+    );
+  },
   me() {
     return apiFetch<AuthUser>("/api/me");
   },
   publicConfig() {
-    return apiFetch<Record<string, unknown>>("/api/config/public");
+    return apiFetch<{
+      configured: boolean;
+      signers: Array<{ address: string; label: string; role: string }>;
+      [key: string]: unknown;
+    }>("/api/config/public");
   },
   listAdminUsers() {
     return apiFetch<{ users: AdminUser[] }>("/api/admin/users");
@@ -102,7 +126,11 @@ export const api = {
   },
   updateAdminUser(
     id: string,
-    input: { roles?: string[]; signerAddress?: string | null },
+    input: {
+      roles?: string[];
+      signerAddress?: string | null;
+      email?: string | null;
+    },
   ) {
     return apiFetch<AdminUser>(`/api/admin/users/${id}`, {
       method: "PATCH",
@@ -136,7 +164,7 @@ export const api = {
     treasuryAddress: string;
     activePermissionId: number;
     signers: Array<{
-      role: "signer_a" | "signer_b" | "signer_c";
+      role: "signer";
       label: string;
       address: string;
     }>;
@@ -152,7 +180,7 @@ export const api = {
         activePermissionName: string;
         threshold: number;
         signers: Array<{
-          role: "signer_a" | "signer_b" | "signer_c";
+          role: "signer";
           label: string;
           address: string;
           weight: number;
@@ -200,14 +228,26 @@ export const api = {
       body: JSON.stringify({}),
     });
   },
-  createSigningSession(id: string) {
+  getSigningPayload(id: string) {
     return apiFetch<{
-      signingToken: string;
-      signerClientUrl: string;
-      expiresAt: string;
-    }>(`/api/payment-requests/${id}/signing-session`, {
+      rawDataHex: string;
+      txId: string;
+      payloadHash: string;
+      request: Record<string, unknown>;
+    }>(`/api/payment-requests/${id}/signing-payload`);
+  },
+  submitSignature(
+    id: string,
+    input: {
+      signature: string;
+      txId: string;
+      payloadHash: string;
+      independentReviewConfirmed: boolean;
+    },
+  ) {
+    return apiFetch<Record<string, unknown>>(`/api/payment-requests/${id}/signatures`, {
       method: "POST",
-      body: JSON.stringify({}),
+      body: JSON.stringify(input),
     });
   },
   getSignWeight(id: string) {
@@ -234,4 +274,13 @@ export function copyToClipboard(value: string) {
 export function formatAddress(address: string): string {
   if (address.length <= 12) return address;
   return `${address.slice(0, 6)}…${address.slice(-6)}`;
+}
+
+export function displayUserLabel(user: {
+  email: string | null;
+  signerAddress: string | null;
+}): string {
+  if (user.email) return user.email;
+  if (user.signerAddress) return formatAddress(user.signerAddress);
+  return "User";
 }

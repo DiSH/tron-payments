@@ -123,7 +123,7 @@ describe("TreasuryConfigService.discover", () => {
 describe("TreasuryConfigService.save validation", () => {
   const audit = { record: vi.fn().mockResolvedValue({}) };
 
-  it("rejects incomplete signer roles before hitting chain", async () => {
+  it("rejects incomplete signer set before hitting chain", async () => {
     const tronRpc = {
       getAccount: vi.fn(),
       validateTreasuryConfig: vi.fn(),
@@ -140,8 +140,8 @@ describe("TreasuryConfigService.save validation", () => {
           treasuryAddress: ADDR_A,
           activePermissionId: 2,
           signers: [
-            { role: "signer_a", label: "A", address: ADDR_A },
-            { role: "signer_b", label: "B", address: ADDR_A },
+            { role: "signer", label: "A", address: ADDR_A },
+            { role: "signer", label: "B", address: ADDR_A },
           ],
         },
         "user-1",
@@ -168,9 +168,9 @@ describe("TreasuryConfigService.save validation", () => {
           treasuryAddress: ADDR_A,
           activePermissionId: 2,
           signers: [
-            { role: "signer_a", label: "A", address: ADDR_A },
-            { role: "signer_b", label: "B", address: ADDR_A },
-            { role: "signer_c", label: "C", address: ADDR_A },
+            { role: "signer", label: "A", address: ADDR_A },
+            { role: "signer", label: "B", address: ADDR_A },
+            { role: "signer", label: "C", address: ADDR_A },
           ],
         },
         "user-1",

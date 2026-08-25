@@ -25,14 +25,14 @@ Read authoritative docs **before** making changes:
 ## Before Coding
 
 1. Read bible sections relevant to your task (security §2, domain §6, flows §7, Ledger §11).
-2. Read `docs/architecture.md` C3/C4 for your component (api, web, signer, shared).
+2. Read `docs/architecture.md` C3/C4 for your component (api, web, shared).
 3. Confirm task does not violate security invariants.
 4. For Ledger/signing work: confirm testnet POC status (bible §11.2).
 
 ## Top Invariants
 
 1. **No private keys** — seed phrases, private keys, PINs never enter any part of the system.
-2. **Ledger local-only** — USB/HID signing happens only in `apps/signer` on signer's machine.
+2. **Ledger via WebHID in SPA** — USB/HID signing happens in `apps/web` via WebHID on user gesture; backend never accesses Ledger.
 3. **Server cannot sign** — backend has no signing capability; no `multiSign` with private key.
 4. **Immutable payload** — after first signature, recipient/amount/token/treasury/permission/expiration are frozen.
 5. **Threshold gate** — broadcast only after verified on-chain weight ≥ 2.
@@ -54,7 +54,7 @@ Read authoritative docs **before** making changes:
 - Shell: `devbox shell`
 - Install: `devbox run install`
 - Dev (all): `devbox run dev` (Compose: Postgres + API + Web)
-- Dev (single): `devbox run dev:api` / `dev:web` / `dev:signer` (host fallbacks; signer is host-only)
+- Dev (single): `devbox run dev:api` / `dev:web` (host fallbacks)
 - Test: `devbox run test`
 - Lint: `devbox run lint`
 - DB migrate: `devbox run db:migrate`
@@ -69,7 +69,7 @@ Environment: copy `.env.example` → `.env`. Never commit `.env`.
 **Ask before changing architecture.** If a task would add or alter any of the following, **stop and ask the user for explicit approval**:
 
 - A new **container** (standalone service, new deployable)
-- **Ledger access** from backend or web UI (browser WebHID on hosted SPA)
+- **Ledger access** from the backend (WebHID in SPA is the approved path)
 - **Private key handling** anywhere in the codebase
 - New **token type** or **smart contract operation** beyond USDT transfer
 - Change to **canonical payload schema** (affects in-flight requests)
@@ -98,3 +98,4 @@ See `docs/architecture.md` → "Architecture Change Checklist".
 - Broadcast without signature verification + weight ≥ 2
 - Auto-retry broadcast on ambiguous results
 - Mainnet payments before testnet POC passes
+- Logging APDU packets, access tokens, or Ledger secrets from WebHID flows

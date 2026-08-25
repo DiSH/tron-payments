@@ -1,5 +1,6 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
+import { addressesEqual } from "@tron-payments/shared";
 import { createAuthHook, requireRoles } from "../plugins/auth.js";
 import type { AppContext } from "../context.js";
 import type { AuditContext } from "../services/audit.service.js";
@@ -21,6 +22,40 @@ export async function registerAuthRoutes(app: FastifyInstance, ctx: AppContext) 
       return result;
     } catch {
       return reply.code(401).send({ error: "Invalid credentials" });
+    }
+  });
+
+  app.post("/api/auth/ledger/challenge", async (_request, reply) => {
+    try {
+      return await ctx.auth.createLedgerChallenge();
+    } catch (err) {
+      return reply.code(500).send({
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  });
+
+  app.post("/api/auth/ledger/verify", async (request, reply) => {
+    const body = request.body as {
+      challengeId?: string;
+      signature?: string;
+      address?: string;
+    };
+    if (!body.challengeId || !body.signature) {
+      return reply
+        .code(400)
+        .send({ error: "challengeId and signature required" });
+    }
+    try {
+      return await ctx.auth.verifyLedgerLogin({
+        challengeId: body.challengeId,
+        signature: body.signature,
+        expectedAddress: body.address,
+      });
+    } catch (err) {
+      return reply.code(401).send({
+        error: err instanceof Error ? err.message : "Ledger login failed",
+      });
     }
   });
 
@@ -137,7 +172,7 @@ export async function registerAdminTreasuryConfigRoutes(
         treasuryAddress?: string;
         activePermissionId?: number;
         signers?: Array<{
-          role?: "signer_a" | "signer_b" | "signer_c";
+          role?: "signer";
           label?: string;
           address?: string;
         }>;
@@ -154,15 +189,15 @@ export async function registerAdminTreasuryConfigRoutes(
       }
 
       const signers = body.signers.map((s) => ({
-        role: s.role!,
+        role: "signer" as const,
         label: s.label ?? "",
         address: s.address!,
       }));
 
-      if (signers.some((s) => !s.role || !s.address)) {
+      if (signers.some((s) => !s.address)) {
         return reply
           .code(400)
-          .send({ error: "Each signer requires role and address" });
+          .send({ error: "Each signer requires an address" });
       }
 
       try {
@@ -242,10 +277,14 @@ const updateUserBodySchema = z
   .object({
     roles: z.array(z.string()).min(1).optional(),
     signerAddress: z.string().nullable().optional(),
+    email: z.string().nullable().optional(),
   })
   .refine(
-    (body) => body.roles !== undefined || body.signerAddress !== undefined,
-    { message: "roles or signerAddress required" },
+    (body) =>
+      body.roles !== undefined ||
+      body.signerAddress !== undefined ||
+      body.email !== undefined,
+    { message: "roles, signerAddress, or email required" },
   );
 
 const resetPasswordBodySchema = z.object({
@@ -498,7 +537,7 @@ export async function registerPaymentRequestRoutes(
 
   app.post(
     "/api/payment-requests/:id/signing-session",
-    { preHandler: [auth, requireRoles("signer_a", "signer_b", "signer_c", "admin")] },
+    { preHandler: [auth, requireRoles("signer", "admin")] },
     async (request, reply) => {
       const { id } = request.params as { id: string };
       const user = request.user!;
@@ -520,7 +559,6 @@ export async function registerPaymentRequestRoutes(
       return {
         requestId: id,
         signingToken: token,
-        signerClientUrl: `http://127.0.0.1:${process.env.SIGNER_CLIENT_PORT ?? 3847}/sign?requestId=${id}&token=${token}`,
         expiresAt: expiresAt.toISOString(),
       };
     },
@@ -528,9 +566,22 @@ export async function registerPaymentRequestRoutes(
 
   app.get(
     "/api/payment-requests/:id/signing-payload",
-    { preHandler: auth },
+    { preHandler: [auth, requireRoles("signer", "admin")] },
     async (request, reply) => {
       const { id } = request.params as { id: string };
+      const user = request.user!;
+      if (!user.signerAddress) {
+        return reply.code(400).send({ error: "User has no registered signer address" });
+      }
+      if (!ctx.config) {
+        return reply.code(400).send({ error: "Treasury not configured" });
+      }
+      const isAllowed = ctx.config.signers.some((s) =>
+        addressesEqual(s.address, user.signerAddress!),
+      );
+      if (!isAllowed && !user.roles.includes("admin")) {
+        return reply.code(403).send({ error: "Signer address not allowlisted" });
+      }
       try {
         return await ctx.paymentRequests.getSigningPayload(id);
       } catch (err) {
@@ -543,7 +594,7 @@ export async function registerPaymentRequestRoutes(
 
   app.post(
     "/api/payment-requests/:id/signatures",
-    { preHandler: [auth, requireRoles("signer_a", "signer_b", "signer_c", "admin")] },
+    { preHandler: [auth, requireRoles("signer", "admin")] },
     async (request, reply) => {
       if (!ctx.config) {
         return reply.code(400).send({ error: "Treasury not configured" });

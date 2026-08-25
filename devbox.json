@@ -27,7 +27,6 @@
       "dev": "docker compose up",
       "dev:api": "npm run dev -w @tron-payments/api",
       "dev:web": "npm run dev -w @tron-payments/web",
-      "dev:signer": "npm run dev -w @tron-payments/signer",
       "build": "npm run build --workspaces --if-present",
       "lint": "npm run lint --workspaces --if-present",
       "test": "npm run test --workspaces --if-present",

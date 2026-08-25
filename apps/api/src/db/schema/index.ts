@@ -11,8 +11,8 @@ import {
 
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
-  email: varchar("email", { length: 255 }).notNull().unique(),
-  passwordHash: text("password_hash").notNull(),
+  email: varchar("email", { length: 255 }).unique(),
+  passwordHash: text("password_hash"),
   roles: jsonb("roles").$type<string[]>().notNull().default([]),
   signerAddress: varchar("signer_address", { length: 64 }),
   disabledAt: timestamp("disabled_at", { withTimezone: true }),
@@ -21,6 +21,14 @@ export const users = pgTable("users", {
   })
     .defaultNow()
     .notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const authChallenges = pgTable("auth_challenges", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  message: text("message").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  consumedAt: timestamp("consumed_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
@@ -111,7 +119,7 @@ export type TreasurySignerRow = {
   label: string;
   address: string;
   weight: number;
-  role: "signer_a" | "signer_b" | "signer_c";
+  role: "signer";
 };
 
 export const treasurySettings = pgTable("treasury_settings", {

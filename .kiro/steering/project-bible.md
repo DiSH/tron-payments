@@ -39,7 +39,7 @@ Three finance operators in different locations must be able to:
 
 1. Create a payment request.
 2. Independently review payment details.
-3. Sign the **same TRON transaction** with their Ledger devices.
+3. Sign the **same TRON transaction** with their Ledger devices (browser WebHID).
 4. Collect two of three signatures.
 5. Verify signatures belong to allowlisted keys and meet the weight threshold.
 6. Broadcast to TRON mainnet only after threshold is reached.
@@ -77,15 +77,15 @@ Treasury must already have TRON native permissions:
 
 ```text
 Owner Permission:
-  Signer A — weight 1
-  Signer B — weight 1
-  Signer C — weight 1
+  Key1 — weight 1
+  Key2 — weight 1
+  Key3 — weight 1
   threshold = 2
 
 Active Permission (Treasury payments):
-  Signer A — weight 1
-  Signer B — weight 1
-  Signer C — weight 1
+  Key1 — weight 1
+  Key2 — weight 1
+  Key3 — weight 1
   threshold = 2
   allows TriggerSmartContract
 ```
@@ -105,8 +105,8 @@ These rules override convenience, speed, and feature requests.
 | **No secrets in system** | Seed phrases, private keys, PINs, keystore files, Ledger secrets must **never** enter app, server, browser form, DB, logs, or analytics |
 | **Ledger-only signing** | Signature created only on physical Ledger with Tron app open |
 | **Server cannot sign** | Backend must have no technical ability to sign payments |
-| **No browser key access** | Web UI never receives private keys |
-| **Local HID transport** | Signer client connects to Ledger via USB/HID locally |
+| **No browser key access** | Web UI never receives private keys or seed material |
+| **Browser WebHID transport** | SPA connects to Ledger via WebHID (`@ledgerhq/hw-transport-webhid`); backend never accesses Ledger |
 | **Immutable payload** | All signatures bind to one canonical transaction payload |
 | **No post-signature edits** | Recipient, amount, token, treasury, permission ID, expiration cannot change after first signature |
 | **Threshold gate** | Broadcast only after independent verification of weight ≥ 2 |
@@ -146,7 +146,6 @@ devbox shell          # enter environment
 devbox run install    # npm install (all workspaces)
 devbox run docker:up  # Postgres + API + Web (hot reload)
 devbox run dev        # same stack, attached logs
-devbox run dev:signer # Ledger client on the host (never in Docker)
 ```
 
 Canonical commands are in `devbox.json` shell scripts and root `package.json`. Agents should prefer `devbox run <script>` over ad-hoc global tool versions.
@@ -157,8 +156,7 @@ Canonical commands are in `devbox.json` shell scripts and root `package.json`. A
 tron-payments/
 ├── apps/
 │   ├── api/       # Fastify backend — transaction builder, verifier, broadcast
-│   ├── web/       # React SPA — dashboard, requests, signing UI
-│   └── signer/    # Local Ledger client — USB/HID, never deployed to server
+│   └── web/       # React SPA — dashboard, requests, WebHID Ledger signing
 ├── packages/
 │   └── shared/    # Types, canonical hash, TRON helpers, state machine
 ├── docs/          # Architecture, threat model, runbooks
@@ -187,7 +185,7 @@ tron-payments/
 | Database | PostgreSQL 16 |
 | ORM / migrations | Drizzle |
 | TRON SDK | `tronweb` |
-| Ledger | `@ledgerhq/hw-app-trx` + WebHID/HID transport |
+| Ledger | `@ledgerhq/hw-app-trx` + `@ledgerhq/hw-transport-webhid` in Web SPA |
 | Queues (MVP) | DB-backed job table |
 | Deployment | Docker Compose |
 | Package manager | npm (lockfile committed) |
@@ -201,7 +199,7 @@ Roles are stored in DB, not hardcoded in UI.
 | Role | Capabilities | Restrictions |
 |---|---|---|
 | **Requester** | Create payment request drafts | Cannot edit payload after first signature; cannot broadcast without threshold |
-| **Signer A/B/C** | Review and sign with Ledger | Only own allowlisted address; no access to others' keys |
+| **Signer** | Review and sign with Ledger (WebHID) | Only own allowlisted address; no access to others' keys |
 | **Executor** | Broadcast after threshold | Cannot modify payload; may overlap with Signer |
 | **Admin** | Users, config, reference data | Cannot sign as finance signer; cannot change on-chain permissions |
 | **Auditor** | Read-only view of requests, signatures, hashes | No create/sign/broadcast |
@@ -215,7 +213,7 @@ MVP allows Requester + Signer role combination for same user.
 See `docs/architecture.md` for full C4 diagrams. Summary:
 
 ```text
-Web UI (React)
+Web UI (React + WebHID Ledger)
   └─ HTTPS API (Fastify)
        ├─ PostgreSQL (requests, signatures, audit)
        ├─ TRON RPC client
@@ -223,16 +221,9 @@ Web UI (React)
        ├─ Signature verifier (ECDSA recovery)
        ├─ On-chain permission/weight verifier
        └─ Broadcast worker
-
-Local Signer Client (per finance operator)
-  ├─ Auth to API
-  ├─ Fetch canonical payload
-  ├─ Local re-validation
-  ├─ USB/HID → Ledger Tron app
-  └─ Submit signature + metadata only
 ```
 
-**Critical separation:** Ledger interaction happens **only** in `apps/signer`, running locally on the signer's machine. Backend and Web UI never touch Ledger hardware.
+**Critical separation:** Private keys never leave the Ledger. The Web SPA talks to Ledger only via WebHID on a user gesture; the backend verifies signatures and never accesses hardware.
 
 ---
 
@@ -305,13 +296,10 @@ After first signature: **no edits**. New payment = new request + new txID.
 ### 7.2 Signing Flow
 
 1. Signer checks independent verification checkbox in Web UI (logged to audit, not a crypto signature).
-2. Web UI opens local signer client with request ID + short-lived signing token.
-3. Signer client downloads canonical payload from API.
-4. Client re-validates all fields locally.
-5. Full-screen review → Ledger connect → Tron app → sign raw transaction bytes.
-6. Client verifies recovered address matches authorized signer.
-7. Client submits `{ requestId, signature, txId, payloadHash, signedAt }` to API.
-8. Server verifies signature cryptographically, checks on-chain weight via `getSignWeight`.
+2. Web UI fetches signing payload from API.
+3. WebHID connects to Ledger → Tron app → `signTransactionHash` on raw transaction bytes.
+4. Web submits `{ signature, txId, payloadHash, independentReviewConfirmed }` to API.
+5. Server verifies signature cryptographically, checks on-chain weight via `getSignWeight`.
 
 ### 7.3 Broadcast Flow
 
@@ -410,9 +398,9 @@ GET /health/tron-rpc
 ### 11.1 Requirements
 
 - Library: `@ledgerhq/hw-app-trx`
-- Transport: WebHID or HID (local only, in `apps/signer`)
+- Transport: `@ledgerhq/hw-transport-webhid` in `apps/web` (secure context: HTTPS or localhost)
 - Derivation path explicitly mapped to signer address in config
-- Handle: device not connected, wrong device, Tron app closed, user rejection, locked device, Ledger Live conflict, USB timeout, unsupported app version
+- Handle: device not connected, wrong device, Tron app closed, user rejection, locked device, Ledger Live conflict, USB timeout, unsupported app version, unsupported browser
 
 ### 11.2 Proof of Concept (Mandatory Gate)
 
@@ -443,7 +431,7 @@ POC artifacts: `scripts/ledger-poc/` or `docs/ledger-poc-report.md`.
 4. **Signing Queue** — pending requests sorted by expiration
 5. **Treasury Health** — on-chain permissions, balances, RPC status
 6. **Admin → Users** — list, create, assign roles / signer address, reset password, disable
-7. **Admin → Treasury Settings** — discover on-chain Active Permission, map keys to Signer A/B/C, save to DB
+7. **Admin → Treasury Settings** — discover on-chain Active Permission, select three Signer keys, save to DB
 8. **Audit** — filters, CSV export
 
 ### 12.2 UX Rules
@@ -576,7 +564,7 @@ MVP is ready only when **all** are true:
 
 ## 17. Required Deliverables
 
-1. Source: `apps/api`, `apps/web`, `apps/signer`, `packages/shared`
+1. Source: `apps/api`, `apps/web`, `packages/shared`
 2. Docker Compose for local/staging
 3. `.env.example`
 4. DB migrations (Drizzle)

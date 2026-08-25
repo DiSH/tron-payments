@@ -8,13 +8,12 @@ Internal tool for remote **2-of-3 multisig USDT TRC-20 payments** from a corpora
 
 | Container | Role |
 |---|---|
-| Web SPA (`apps/web`) | React + Vite; dashboard, payment requests, signing queue, audit |
-| API (`apps/api`) | Fastify; auth, RBAC, tx builder, signature verifier, broadcast |
-| Signer Client (`apps/signer`) | Local Ledger client via USB/HID — **never deployed to server** |
+| Web SPA (`apps/web`) | React + Vite; dashboard, payment requests, WebHID Ledger connect/sign/login, audit |
+| API (`apps/api`) | Fastify; auth (password + Ledger challenge), RBAC, tx builder, signature verifier, broadcast |
 | PostgreSQL | Payment requests, signatures, audit events, job queue |
 | Shared (`packages/shared`) | Types, canonical hash, state machine, TRON helpers |
 
-**Critical:** Ledger interaction happens **only** in `apps/signer` on the signer's local machine. Backend and Web UI must never access Ledger hardware or private keys.
+**Critical:** Private keys never leave the Ledger. The SPA uses WebHID (`@ledgerhq/hw-transport-webhid` + `@ledgerhq/hw-app-trx`) on user gesture. Backend verifies ECDSA signatures and never accesses Ledger hardware.
 
 **Canonical docs:**
 
@@ -26,7 +25,7 @@ Internal tool for remote **2-of-3 multisig USDT TRC-20 payments** from a corpora
 
 ### Standard commands
 
-**Local environment:** Devbox + Docker Compose (Postgres, API, Web). Signer runs on the host. All commands run inside devbox unless noted.
+**Local environment:** Devbox + Docker Compose (Postgres, API, Web). All commands run inside devbox unless noted.
 
 ```bash
 devbox shell              # enter dev environment
@@ -44,7 +43,6 @@ Runtime: Node 22 + npm (canonical package manager; `packageManager` is `npm@10.9
 | `devbox run dev` | Foreground `docker compose up` (Postgres + API + Web) |
 | `devbox run dev:api` | API on the host (port 3000) — fallback without containers |
 | `devbox run dev:web` | Web on the host (port 5173) — fallback without containers |
-| `devbox run dev:signer` | Signer client on the host (port 3847); never containerized |
 | `devbox run db:migrate` | Run Drizzle migrations against `DATABASE_URL` (host) |
 | `devbox run lint` | Lint all workspaces |
 | `devbox run build` | Build all workspaces |
@@ -53,27 +51,27 @@ Runtime: Node 22 + npm (canonical package manager; `packageManager` is `npm@10.9
 | `devbox run docker:prod:cert` | Issue Let's Encrypt cert for `fboardpagec.com` (`bash scripts/init-letsencrypt.sh`) |
 | `devbox run docker:prod:up` | Build and start production Compose (API + nginx TLS, no Postgres) |
 
-Copy `.env.example` to `.env` and fill in RPC / DB / auth. Local Compose overrides `DATABASE_URL` to the `postgres` service. Production Compose has no database — point `DATABASE_URL` at your Postgres. Production nginx serves `https://fboardpagec.com` (set `CERTBOT_EMAIL`, then `devbox run docker:prod:cert`). Configure treasury address and signers via Admin → Treasury Settings after first login.
+Copy `.env.example` to `.env` and fill in RPC / DB / auth. Local Compose overrides `DATABASE_URL` to the `postgres` service. Production Compose has no database — point `DATABASE_URL` at your Postgres. Production nginx serves `https://fboardpagec.com` (set `CERTBOT_EMAIL`, then `devbox run docker:prod:cert`). Configure treasury address and signers via Admin → Treasury Settings after first login. Ledger login can create accounts; Admin assigns the `signer` role and treasury allowlist.
 
 ### Security rules (non-negotiable)
 
 1. **Never** ask for or store seed phrases, private keys, PINs, or Ledger secrets.
 2. **Never** use `tronWeb.trx.multiSign(..., privateKey, ...)` in production paths.
-3. **Never** give backend or web UI access to Ledger hardware.
-4. **Never** use `float` or JavaScript `number` for USDT amounts — use `bigint` or decimal strings.
-5. **Never** accept arbitrary raw transactions or smart contract calldata from UI.
-6. **Never** broadcast without server-side signature verification and on-chain weight ≥ 2.
-7. **Never** move mainnet funds before testnet POC and acceptance tests pass.
+3. **Never** give the backend access to Ledger hardware.
+4. WebHID Ledger access is allowed in the SPA only on user gesture; do not log APDU/secrets; always close the transport.
+5. **Never** use `float` or JavaScript `number` for USDT amounts — use `bigint` or decimal strings.
+6. **Never** accept arbitrary raw transactions or smart contract calldata from UI.
+7. **Never** broadcast without server-side signature verification and on-chain weight ≥ 2.
+8. **Never** move mainnet funds before testnet POC and acceptance tests pass.
 
 ### Development order (MVP)
 
 1. **Ledger POC on testnet** — mandatory gate before full MVP (see bible §11.2)
 2. `packages/shared` — types, canonical hash, state machine, TRON helpers
 3. `apps/api` — config validation, payment request CRUD, tx builder, signature verifier
-4. `apps/signer` — local Ledger signing client
-5. `apps/web` — UI pages per bible §12
-6. Integration tests + testnet acceptance suite
-7. Mainnet rollout with minimum amount limit
+4. `apps/web` — UI pages + WebHID Ledger module
+5. Integration tests + testnet acceptance suite
+6. Mainnet rollout with minimum amount limit
 
 ### Testing
 

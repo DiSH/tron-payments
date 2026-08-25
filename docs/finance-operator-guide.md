@@ -2,20 +2,26 @@
 
 ## Create a payment request
 
-1. Sign in to the web UI.
+1. Sign in to the web UI (email/password or **Sign in with Ledger**).
 2. Open **New request**.
 3. Enter the full recipient TRON address, USDT amount, purpose, and invoice/reference.
 4. Review the mainnet warning and submit.
 5. Share the request link with other signers.
+
+## Connect Ledger (eligibility check)
+
+1. Plug in your Ledger, unlock it, and open the Tron app.
+2. On the Dashboard or payment detail page, click **Connect Ledger**.
+3. Allow the browser WebHID permission when prompted.
+4. Review the status: you can sign only if the device address matches your profile, is in the treasury allowlist, and your account has the Signer role.
 
 ## Sign with Ledger
 
 1. Open the request detail page.
 2. Verify recipient, amount, token (USDT TRC-20), purpose, and expiration.
 3. Check the independent review checkbox.
-4. Click **Sign with Ledger** — this opens the local signer client on your machine.
-5. Connect Ledger, unlock it, and open the Tron app.
-6. Confirm the payment on the device.
+4. Click **Sign with Ledger** — approve the transaction on the device in the same browser session.
+5. Wait for the API to verify the signature and update sign weight.
 
 You never enter seed phrases or private keys into the web app.
 
@@ -25,12 +31,6 @@ You never enter seed phrases or private keys into the web app.
 2. Confirm the final summary.
 3. Track status until **CONFIRMED** and open the TronScan link.
 
-## Local signer client
+## Browser requirements
 
-Run on the signer's computer only:
-
-```bash
-devbox run dev:signer
-```
-
-Default URL: `http://127.0.0.1:3847`
+WebHID requires Chrome or Edge over **HTTPS** (production) or **localhost** (local Vite). Firefox WebHID support is out of MVP scope.

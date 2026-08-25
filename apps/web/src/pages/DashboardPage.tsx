@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../lib/api";
 import { useAuth } from "../contexts/AuthContext";
+import { ConnectLedgerButton } from "../components/ConnectLedgerButton";
 
 export function DashboardPage() {
   const { hasRole } = useAuth();
@@ -35,6 +36,7 @@ export function DashboardPage() {
   return (
     <div>
       <h1>Dashboard</h1>
+      <ConnectLedgerButton />
       {error && <p style={{ color: "crimson" }}>{error}</p>}
 
       {!config?.configValid && (

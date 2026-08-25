@@ -7,22 +7,6 @@ import {
 } from "../lib/api";
 import { useAuth } from "../contexts/AuthContext";
 
-type SignerRole = "signer_a" | "signer_b" | "signer_c";
-
-const REQUIRED_ROLES: SignerRole[] = ["signer_a", "signer_b", "signer_c"];
-
-const ROLE_OPTIONS: Array<{ value: SignerRole; label: string }> = [
-  { value: "signer_a", label: "Signer A" },
-  { value: "signer_b", label: "Signer B" },
-  { value: "signer_c", label: "Signer C" },
-];
-
-const DEFAULT_LABELS: Record<SignerRole, string> = {
-  signer_a: "Finance A",
-  signer_b: "Finance B",
-  signer_c: "Finance C",
-};
-
 export function AdminTreasuryConfigPage() {
   const { hasRole } = useAuth();
   const [step, setStep] = useState(1);
@@ -37,9 +21,7 @@ export function AdminTreasuryConfigPage() {
   const [selectedPermissionId, setSelectedPermissionId] = useState<number | null>(
     null,
   );
-  const [roleByAddress, setRoleByAddress] = useState<
-    Record<string, SignerRole | "">
-  >({});
+  const [selectedAddresses, setSelectedAddresses] = useState<string[]>([]);
   const [labelByAddress, setLabelByAddress] = useState<Record<string, string>>(
     {},
   );
@@ -52,13 +34,13 @@ export function AdminTreasuryConfigPage() {
         if (cfg.configured && cfg.config) {
           setTreasuryAddress(cfg.config.treasuryAddress);
           setSelectedPermissionId(cfg.config.activePermissionId);
-          const roles: Record<string, SignerRole | ""> = {};
           const labels: Record<string, string> = {};
+          const addresses: string[] = [];
           for (const s of cfg.config.signers) {
-            roles[s.address] = s.role;
+            addresses.push(s.address);
             labels[s.address] = s.label;
           }
-          setRoleByAddress(roles);
+          setSelectedAddresses(addresses);
           setLabelByAddress(labels);
         }
       })
@@ -96,28 +78,38 @@ export function AdminTreasuryConfigPage() {
     const perm = permissions.find((p) => p.id === id);
     if (!perm) return;
 
-    const nextRoles: Record<string, SignerRole | ""> = {};
-    const nextLabels: Record<string, string> = {};
-    for (const key of perm.keys) {
-      nextRoles[key.address] = roleByAddress[key.address] ?? "";
-      nextLabels[key.address] =
-        labelByAddress[key.address] ??
-        (roleByAddress[key.address]
-          ? DEFAULT_LABELS[roleByAddress[key.address] as SignerRole]
-          : "");
+    const nextLabels: Record<string, string> = { ...labelByAddress };
+    for (const [index, key] of perm.keys.entries()) {
+      if (!nextLabels[key.address]) {
+        nextLabels[key.address] = `Signer ${index + 1}`;
+      }
     }
-    setRoleByAddress(nextRoles);
+    const preselected =
+      selectedAddresses.length === 3
+        ? selectedAddresses.filter((a) =>
+            perm.keys.some((k) => k.address === a),
+          )
+        : perm.keys.length === 3
+          ? perm.keys.map((k) => k.address)
+          : selectedAddresses.filter((a) =>
+              perm.keys.some((k) => k.address === a),
+            );
+    setSelectedAddresses(preselected);
     setLabelByAddress(nextLabels);
     setStep(3);
   };
 
-  const assignedRoles = Object.values(roleByAddress).filter(
-    (r): r is SignerRole => r === "signer_a" || r === "signer_b" || r === "signer_c",
-  );
-  const mappingComplete =
-    assignedRoles.length === 3 &&
-    new Set(assignedRoles).size === 3 &&
-    REQUIRED_ROLES.every((r) => assignedRoles.includes(r));
+  const toggleAddress = (address: string) => {
+    setSelectedAddresses((prev) => {
+      if (prev.includes(address)) {
+        return prev.filter((a) => a !== address);
+      }
+      if (prev.length >= 3) return prev;
+      return [...prev, address];
+    });
+  };
+
+  const mappingComplete = selectedAddresses.length === 3;
 
   const save = async () => {
     if (!selectedPermission || !mappingComplete) return;
@@ -125,16 +117,12 @@ export function AdminTreasuryConfigPage() {
     setError(null);
     setSuccess(null);
     try {
-      const signers = selectedPermission.keys
-        .filter((k) => roleByAddress[k.address])
-        .map((k) => {
-          const role = roleByAddress[k.address] as SignerRole;
-          return {
-            role,
-            address: k.address,
-            label: labelByAddress[k.address]?.trim() || DEFAULT_LABELS[role],
-          };
-        });
+      const signers = selectedAddresses.map((address, index) => ({
+        role: "signer" as const,
+        address,
+        label:
+          labelByAddress[address]?.trim() || `Signer ${index + 1}`,
+      }));
 
       const result = await api.saveTreasuryConfig({
         treasuryAddress: treasuryAddress.trim(),
@@ -170,9 +158,9 @@ export function AdminTreasuryConfigPage() {
     <div>
       <h1>Treasury settings</h1>
       <p style={{ color: "#555", maxWidth: 640 }}>
-        On-chain multisig is configured in TronLink. Here you register the treasury
-        address, pick the Active Permission used for payments, and map its keys to
-        Signer A / B / C.
+        On-chain multisig is configured outside this app. Here you register the
+        treasury address, pick the Active Permission used for payments, and select
+        exactly three on-chain keys as allowlisted Signers.
       </p>
 
       {existing?.configured && existing.config && (
@@ -294,7 +282,7 @@ export function AdminTreasuryConfigPage() {
 
       {step === 3 && selectedPermission && (
         <section>
-          <h2>3. Map keys to Signer A / B / C</h2>
+          <h2>3. Select three Signer keys</h2>
           <button type="button" onClick={() => setStep(2)} style={{ marginBottom: 12 }}>
             ← Back
           </button>
@@ -305,69 +293,48 @@ export function AdminTreasuryConfigPage() {
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr>
+                <th align="left">Include</th>
                 <th align="left">On-chain key</th>
                 <th align="left">Weight</th>
-                <th align="left">Role</th>
                 <th align="left">Label</th>
               </tr>
             </thead>
             <tbody>
-              {selectedPermission.keys.map((k) => (
-                <tr key={k.address}>
-                  <td style={{ padding: "0.5rem 0", fontFamily: "monospace" }}>
-                    {k.address}
-                  </td>
-                  <td>{k.weight}</td>
-                  <td>
-                    <select
-                      value={roleByAddress[k.address] ?? ""}
-                      onChange={(e) => {
-                        const value = e.target.value as SignerRole | "";
-                        setRoleByAddress((prev) => ({
-                          ...prev,
-                          [k.address]: value,
-                        }));
-                        if (value && !labelByAddress[k.address]) {
+              {selectedPermission.keys.map((k) => {
+                const included = selectedAddresses.includes(k.address);
+                return (
+                  <tr key={k.address}>
+                    <td style={{ padding: "0.5rem 0" }}>
+                      <input
+                        type="checkbox"
+                        checked={included}
+                        onChange={() => toggleAddress(k.address)}
+                        disabled={!included && selectedAddresses.length >= 3}
+                      />
+                    </td>
+                    <td style={{ padding: "0.5rem 0", fontFamily: "monospace" }}>
+                      {k.address}
+                    </td>
+                    <td>{k.weight}</td>
+                    <td>
+                      <input
+                        value={labelByAddress[k.address] ?? ""}
+                        onChange={(e) =>
                           setLabelByAddress((prev) => ({
                             ...prev,
-                            [k.address]: DEFAULT_LABELS[value],
-                          }));
+                            [k.address]: e.target.value,
+                          }))
                         }
-                      }}
-                    >
-                      <option value="">—</option>
-                      {ROLE_OPTIONS.map((opt) => (
-                        <option
-                          key={opt.value}
-                          value={opt.value}
-                          disabled={
-                            assignedRoles.includes(opt.value) &&
-                            roleByAddress[k.address] !== opt.value
-                          }
-                        >
-                          {opt.label}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                  <td>
-                    <input
-                      value={labelByAddress[k.address] ?? ""}
-                      onChange={(e) =>
-                        setLabelByAddress((prev) => ({
-                          ...prev,
-                          [k.address]: e.target.value,
-                        }))
-                      }
-                      disabled={!roleByAddress[k.address]}
-                    />
-                  </td>
-                </tr>
-              ))}
+                        disabled={!included}
+                      />
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
           <p style={{ color: "#666" }}>
-            Assign exactly one key to each of Signer A, B, and C.
+            Select exactly three unique keys ({selectedAddresses.length}/3).
           </p>
           <button
             type="button"

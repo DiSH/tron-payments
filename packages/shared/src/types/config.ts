@@ -2,7 +2,7 @@ export interface SignerConfig {
   label: string;
   address: string;
   weight: number;
-  role: "signer_a" | "signer_b" | "signer_c";
+  role: "signer";
 }
 
 export interface TreasuryConfig {

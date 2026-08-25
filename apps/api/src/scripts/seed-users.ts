@@ -7,10 +7,7 @@ async function main() {
   const env = loadEnv();
   const auth = new AuthService(env.JWT_SECRET);
 
-  // Optional: bind seed signers if addresses are provided (legacy/dev convenience).
-  // Primary path: configure treasury via Admin UI, then assign signer addresses to users separately.
-  const signerA = process.env.SIGNER_A_ADDRESS || undefined;
-  const signerB = process.env.SIGNER_B_ADDRESS || undefined;
+  const signerAddress = process.env.SIGNER_ADDRESS || undefined;
 
   const seeds = [
     {
@@ -19,16 +16,10 @@ async function main() {
       roles: ["requester", "executor"] as const,
     },
     {
-      email: "signer-a@example.com",
-      password: "changeme-signer-a",
-      roles: ["signer_a", "requester"] as const,
-      signerAddress: signerA,
-    },
-    {
-      email: "signer-b@example.com",
-      password: "changeme-signer-b",
-      roles: ["signer_b"] as const,
-      signerAddress: signerB,
+      email: "signer@example.com",
+      password: "changeme-signer",
+      roles: ["signer", "requester"] as const,
+      signerAddress,
     },
     {
       email: "admin@example.com",

@@ -42,19 +42,19 @@ describe("env policy + treasury merge", () => {
       threshold: 2,
       signers: [
         {
-          role: "signer_a",
+          role: "signer",
           label: "A",
           address: "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t",
           weight: 1,
         },
         {
-          role: "signer_b",
+          role: "signer",
           label: "B",
           address: "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t",
           weight: 1,
         },
         {
-          role: "signer_c",
+          role: "signer",
           label: "C",
           address: "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t",
           weight: 1,

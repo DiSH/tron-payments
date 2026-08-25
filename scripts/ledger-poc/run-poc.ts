@@ -54,7 +54,7 @@ async function main() {
   console.log("Payload hash:", built.canonicalPayloadHash);
   console.log("Calldata:", built.calldata);
   console.log("");
-  console.log("Step 3+: Sign with Ledger via apps/signer, collect 2 signatures, broadcast.");
+  console.log("Step 3+: Sign with Ledger via WebHID in the web UI, collect 2 signatures, broadcast.");
   console.log("Document results in docs/ledger-poc-report.md");
 }
 

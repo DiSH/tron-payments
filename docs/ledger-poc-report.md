@@ -33,7 +33,7 @@ devbox run db:migrate
 # Configure treasury via Admin → Treasury Settings (web UI), then:
 devbox run validate:config
 tsx scripts/ledger-poc/run-poc.ts
-devbox run dev:signer
+# Sign via WebHID in the web UI (Chrome/Edge, Ledger + Tron app open)
 ```
 
 ## Results

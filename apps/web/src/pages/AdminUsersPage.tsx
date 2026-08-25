@@ -1,13 +1,11 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
-import { api, type AdminUser } from "../lib/api";
+import { api, displayUserLabel, type AdminUser } from "../lib/api";
 import { useAuth } from "../contexts/AuthContext";
 
 const ROLES = [
   "requester",
-  "signer_a",
-  "signer_b",
-  "signer_c",
+  "signer",
   "executor",
   "admin",
   "auditor",
@@ -17,9 +15,7 @@ type Role = (typeof ROLES)[number];
 
 const ROLE_LABELS: Record<Role, string> = {
   requester: "Requester",
-  signer_a: "Signer A",
-  signer_b: "Signer B",
-  signer_c: "Signer C",
+  signer: "Signer",
   executor: "Executor",
   admin: "Admin",
   auditor: "Auditor",
@@ -203,7 +199,7 @@ export function AdminUsersPage() {
     try {
       await api.disableAdminUser(user.id);
       await loadUsers();
-      flash(`Disabled ${user.email}.`);
+      flash(`Disabled ${displayUserLabel(user)}.`);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -296,7 +292,8 @@ export function AdminUsersPage() {
           {users.map((item) => (
             <tr key={item.id} style={{ borderTop: "1px solid #eee", verticalAlign: "top" }}>
               <td style={{ padding: "0.75rem 0.5rem 0.75rem 0" }}>
-                {item.email}
+                {displayUserLabel(item)}
+                {!item.email && item.signerAddress ? " (Ledger)" : ""}
                 {item.id === currentUser?.id ? (
                   <span style={{ color: "#666", fontSize: 12 }}> (you)</span>
                 ) : null}
