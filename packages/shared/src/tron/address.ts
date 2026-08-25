@@ -1,4 +1,5 @@
 import bs58check from "bs58check";
+import { bytesToHex, hexToBytes } from "../bytes.js";
 
 const TRON_ADDRESS_REGEX = /^T[1-9A-HJ-NP-Za-km-z]{33}$/;
 const TRON_HEX_REGEX = /^(0x)?(41)?[0-9a-fA-F]{40}$/;
@@ -17,7 +18,7 @@ export function tronBase58ToHex(address: string): string {
   if (!isValidTronAddress(address)) {
     throw new Error(`Invalid TRON address: ${address}`);
   }
-  return Buffer.from(bs58check.decode(address)).toString("hex");
+  return bytesToHex(bs58check.decode(address));
 }
 
 /** Normalize base58 or hex (41… / 0x41…) to lowercase 42-char hex with 41 prefix. */
@@ -42,7 +43,7 @@ export function tronHexToBase58(hexAddress: string): string {
   if (!hex) {
     throw new Error(`Invalid TRON hex address: ${hexAddress}`);
   }
-  return bs58check.encode(Buffer.from(hex, "hex"));
+  return bs58check.encode(hexToBytes(hex));
 }
 
 /** Convert hex or base58 to base58 for storage/display. */

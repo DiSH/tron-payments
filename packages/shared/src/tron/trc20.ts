@@ -1,4 +1,5 @@
 import bs58check from "bs58check";
+import { hexToBytes } from "../bytes.js";
 import { isValidTronAddress, tronBase58ToHex } from "./address.js";
 
 export const TRANSFER_SELECTOR = "transfer(address,uint256)";
@@ -38,5 +39,5 @@ export function tronHexToBase58Address(hexWithPrefix: string): string {
   const normalized = hexWithPrefix.startsWith("41")
     ? hexWithPrefix
     : `41${hexWithPrefix.replace(/^0+/, "")}`;
-  return bs58check.encode(Buffer.from(normalized, "hex"));
+  return bs58check.encode(hexToBytes(normalized));
 }
