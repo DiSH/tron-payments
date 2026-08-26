@@ -30,7 +30,7 @@ You never enter seed phrases or private keys into the web app.
 
 ## Broadcast
 
-1. After two valid signatures (weight ≥ 2), an executor clicks **Broadcast**.
+1. After valid signatures reach the configured on-chain weight threshold, an executor clicks **Broadcast**.
 2. Confirm the final summary.
 3. Track status until **CONFIRMED** and open the TronScan link.
 

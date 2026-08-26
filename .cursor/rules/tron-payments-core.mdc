@@ -35,7 +35,7 @@ Read authoritative docs **before** making changes:
 2. **Ledger via WebHID in SPA** — USB/HID signing happens in `apps/web` via WebHID on user gesture; backend never accesses Ledger.
 3. **Server cannot sign** — backend has no signing capability; no `multiSign` with private key.
 4. **Immutable payload** — after first signature, recipient/amount/token/treasury/permission/expiration are frozen.
-5. **Threshold gate** — broadcast only after verified on-chain weight ≥ 2.
+5. **Threshold gate** — broadcast only after verified on-chain weight ≥ configured threshold.
 6. **USDT transfer only** — single allowlisted contract, method `transfer(address,uint256)` only.
 7. **No float for money** — use `bigint` or decimal string libraries for USDT amounts.
 8. **Canonical hash** — deterministic digest in `packages/shared`; unit tested.
@@ -95,7 +95,7 @@ See `docs/architecture.md` → "Architecture Change Checklist".
 - Arbitrary raw transaction upload via UI
 - On-chain permission changes through MVP
 - Float/Number for USDT amounts
-- Broadcast without signature verification + weight ≥ 2
+- Broadcast without signature verification + weight ≥ configured threshold
 - Auto-retry broadcast on ambiguous results
 - Mainnet payments before testnet POC passes
 - Logging APDU packets, access tokens, or Ledger secrets from WebHID flows

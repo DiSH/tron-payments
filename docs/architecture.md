@@ -4,7 +4,7 @@
 **Owner:** Finance / Engineering  
 **Last reviewed:** 2026-08-24
 
-Canonical C4 architecture reference for the TRON multisig 2-of-3 USDT treasury MVP. AI agents and human contributors must read this before changing system boundaries, adding containers, or introducing new cross-cutting flows.
+Canonical C4 architecture reference for the TRON multisig USDT treasury MVP. AI agents and human contributors must read this before changing system boundaries, adding containers, or introducing new cross-cutting flows.
 
 **Related docs:**
 
@@ -26,7 +26,7 @@ Canonical C4 architecture reference for the TRON multisig 2-of-3 USDT treasury M
 
 ## C1 — System Context
 
-Internal corporate tool for remote **2-of-3 multisig USDT TRC-20 payments** from a TRON treasury address. Three finance operators use Ledger hardware wallets to sign; a central backend coordinates requests, verifies signatures, and broadcasts.
+Internal corporate tool for remote **multisig USDT TRC-20 payments** from a TRON treasury address. Finance operators use Ledger hardware wallets to sign; a central backend coordinates requests, verifies signatures, and broadcasts after the configured on-chain weight threshold is met.
 
 ### Actors
 

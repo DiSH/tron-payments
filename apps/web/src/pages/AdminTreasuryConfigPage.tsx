@@ -21,6 +21,7 @@ export function AdminTreasuryConfigPage() {
   const [selectedPermissionId, setSelectedPermissionId] = useState<number | null>(
     null,
   );
+  const [signerCount, setSignerCount] = useState(1);
   const [selectedAddresses, setSelectedAddresses] = useState<string[]>([]);
   const [labelByAddress, setLabelByAddress] = useState<Record<string, string>>(
     {},
@@ -42,6 +43,7 @@ export function AdminTreasuryConfigPage() {
           }
           setSelectedAddresses(addresses);
           setLabelByAddress(labels);
+          setSignerCount(Math.max(1, addresses.length));
         }
       })
       .catch((err) => setError(err instanceof Error ? err.message : String(err)))
@@ -52,6 +54,14 @@ export function AdminTreasuryConfigPage() {
     () => permissions.find((p) => p.id === selectedPermissionId) ?? null,
     [permissions, selectedPermissionId],
   );
+
+  const selectedWeightSum = useMemo(() => {
+    if (!selectedPermission) return 0;
+    return selectedAddresses.reduce((sum, address) => {
+      const key = selectedPermission.keys.find((k) => k.address === address);
+      return sum + (key?.weight ?? 0);
+    }, 0);
+  }, [selectedPermission, selectedAddresses]);
 
   const discover = async () => {
     setError(null);
@@ -84,19 +94,41 @@ export function AdminTreasuryConfigPage() {
         nextLabels[key.address] = `Signer ${index + 1}`;
       }
     }
+
+    const maxKeys = Math.max(1, perm.keys.length);
+    const preferredCount = Math.min(
+      Math.max(selectedAddresses.length, 1),
+      maxKeys,
+    );
+    const defaultCount =
+      selectedAddresses.length > 0
+        ? preferredCount
+        : Math.min(maxKeys, Math.max(perm.threshold, 1));
+
+    const inPermission = selectedAddresses.filter((a) =>
+      perm.keys.some((k) => k.address === a),
+    );
     const preselected =
-      selectedAddresses.length === 3
-        ? selectedAddresses.filter((a) =>
-            perm.keys.some((k) => k.address === a),
-          )
-        : perm.keys.length === 3
+      inPermission.length === defaultCount
+        ? inPermission
+        : perm.keys.length === defaultCount
           ? perm.keys.map((k) => k.address)
-          : selectedAddresses.filter((a) =>
-              perm.keys.some((k) => k.address === a),
-            );
+          : inPermission.slice(0, defaultCount);
+
+    setSignerCount(defaultCount);
     setSelectedAddresses(preselected);
     setLabelByAddress(nextLabels);
     setStep(3);
+  };
+
+  const changeSignerCount = (next: number) => {
+    if (!selectedPermission) return;
+    const clamped = Math.min(
+      Math.max(1, next),
+      Math.max(1, selectedPermission.keys.length),
+    );
+    setSignerCount(clamped);
+    setSelectedAddresses((prev) => prev.slice(0, clamped));
   };
 
   const toggleAddress = (address: string) => {
@@ -104,12 +136,14 @@ export function AdminTreasuryConfigPage() {
       if (prev.includes(address)) {
         return prev.filter((a) => a !== address);
       }
-      if (prev.length >= 3) return prev;
+      if (prev.length >= signerCount) return prev;
       return [...prev, address];
     });
   };
 
-  const mappingComplete = selectedAddresses.length === 3;
+  const mappingComplete =
+    selectedAddresses.length === signerCount &&
+    selectedWeightSum >= (selectedPermission?.threshold ?? 0);
 
   const save = async () => {
     if (!selectedPermission || !mappingComplete) return;
@@ -159,8 +193,9 @@ export function AdminTreasuryConfigPage() {
       <h1>Treasury settings</h1>
       <p style={{ color: "#555", maxWidth: 640 }}>
         On-chain multisig is configured outside this app. Here you register the
-        treasury address, pick the Active Permission used for payments, and select
-        exactly three on-chain keys as allowlisted Signers.
+        treasury address, pick the Active Permission used for payments, and
+        allowlist on-chain keys as Signers. Threshold comes from the chain; you
+        choose how many keys to allowlist.
       </p>
 
       {existing?.configured && existing.config && (
@@ -179,7 +214,9 @@ export function AdminTreasuryConfigPage() {
           <p style={{ margin: "0.5rem 0 0" }}>
             {existing.config.treasuryAddress} · permission #
             {existing.config.activePermissionId} · threshold{" "}
-            {existing.config.threshold}
+            {existing.config.threshold} · {existing.config.signers.length}{" "}
+            allowlisted signer
+            {existing.config.signers.length === 1 ? "" : "s"}
           </p>
           {existing.validationErrors.length > 0 && (
             <ul>
@@ -264,11 +301,23 @@ export function AdminTreasuryConfigPage() {
                           </li>
                         ))}
                       </ul>
+                      {!p.allowsTriggerSmartContract && (
+                        <p style={{ color: "#888", margin: "0.5rem 0 0" }}>
+                          Cannot select: permission must allow TriggerSmartContract.
+                        </p>
+                      )}
+                      {p.allowsTriggerSmartContract && p.keys.length < 1 && (
+                        <p style={{ color: "#888", margin: "0.5rem 0 0" }}>
+                          Cannot select: permission has no keys.
+                        </p>
+                      )}
                     </div>
                     <button
                       type="button"
                       onClick={() => selectPermission(p.id)}
-                      disabled={!p.allowsTriggerSmartContract || p.keys.length < 3}
+                      disabled={
+                        !p.allowsTriggerSmartContract || p.keys.length < 1
+                      }
                     >
                       Select
                     </button>
@@ -282,7 +331,7 @@ export function AdminTreasuryConfigPage() {
 
       {step === 3 && selectedPermission && (
         <section>
-          <h2>3. Select three Signer keys</h2>
+          <h2>3. Select Signer keys</h2>
           <button type="button" onClick={() => setStep(2)} style={{ marginBottom: 12 }}>
             ← Back
           </button>
@@ -290,6 +339,17 @@ export function AdminTreasuryConfigPage() {
             Permission #{selectedPermission.id} — threshold{" "}
             {selectedPermission.threshold} (from chain, not editable)
           </p>
+          <label style={{ display: "block", marginBottom: "1rem" }}>
+            Number of allowlisted signers
+            <input
+              type="number"
+              min={1}
+              max={selectedPermission.keys.length}
+              value={signerCount}
+              onChange={(e) => changeSignerCount(Number(e.target.value) || 1)}
+              style={{ display: "block", width: 80, marginTop: 4 }}
+            />
+          </label>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr>
@@ -309,7 +369,9 @@ export function AdminTreasuryConfigPage() {
                         type="checkbox"
                         checked={included}
                         onChange={() => toggleAddress(k.address)}
-                        disabled={!included && selectedAddresses.length >= 3}
+                        disabled={
+                          !included && selectedAddresses.length >= signerCount
+                        }
                       />
                     </td>
                     <td style={{ padding: "0.5rem 0", fontFamily: "monospace" }}>
@@ -334,8 +396,18 @@ export function AdminTreasuryConfigPage() {
             </tbody>
           </table>
           <p style={{ color: "#666" }}>
-            Select exactly three unique keys ({selectedAddresses.length}/3).
+            Select exactly {signerCount} unique key
+            {signerCount === 1 ? "" : "s"} ({selectedAddresses.length}/
+            {signerCount}). Combined weight {selectedWeightSum} / threshold{" "}
+            {selectedPermission.threshold}.
           </p>
+          {selectedAddresses.length === signerCount &&
+            selectedWeightSum < selectedPermission.threshold && (
+              <p style={{ color: "crimson" }}>
+                Selected keys cannot reach the on-chain threshold (
+                {selectedWeightSum} &lt; {selectedPermission.threshold}).
+              </p>
+            )}
           <button
             type="button"
             onClick={save}

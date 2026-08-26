@@ -2,7 +2,7 @@
 
 ## TRON Payments — Agent Instructions
 
-Internal tool for remote **2-of-3 multisig USDT TRC-20 payments** from a corporate TRON treasury using Ledger hardware wallets.
+Internal tool for remote **multisig USDT TRC-20 payments** from a corporate TRON treasury using Ledger hardware wallets.
 
 ## Architecture (C4)
 
@@ -61,7 +61,7 @@ Copy `.env.example` to `.env` and fill in RPC / DB / auth. Local Compose overrid
 4. WebHID Ledger access is allowed in the SPA only on user gesture; do not log APDU/secrets; always close the transport.
 5. **Never** use `float` or JavaScript `number` for USDT amounts — use `bigint` or decimal strings.
 6. **Never** accept arbitrary raw transactions or smart contract calldata from UI.
-7. **Never** broadcast without server-side signature verification and on-chain weight ≥ 2.
+7. **Never** broadcast without server-side signature verification and on-chain weight ≥ configured threshold.
 8. **Never** move mainnet funds before testnet POC and acceptance tests pass.
 
 ### Development order (MVP)

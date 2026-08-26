@@ -185,8 +185,8 @@ export class TreasuryConfigService {
       throw new TreasuryConfigError("Invalid treasury address");
     }
 
-    if (input.signers.length !== 3) {
-      throw new TreasuryConfigError("Exactly three signers are required");
+    if (input.signers.length < 1) {
+      throw new TreasuryConfigError("At least one signer is required");
     }
     if (input.signers.some((s) => s.role !== "signer")) {
       throw new TreasuryConfigError('Each signer must have role "signer"');
@@ -199,7 +199,7 @@ export class TreasuryConfigService {
       }
     }
     const unique = new Set(addresses.map((a) => a.toLowerCase()));
-    if (unique.size !== 3) {
+    if (unique.size !== addresses.length) {
       throw new TreasuryConfigError("Signer addresses must be unique");
     }
 
@@ -221,6 +221,13 @@ export class TreasuryConfigService {
       );
     }
 
+    if (input.signers.length > permission.keys.length) {
+      throw new TreasuryConfigError(
+        `Cannot allowlist ${input.signers.length} signers; permission has ${permission.keys.length} keys`,
+        422,
+      );
+    }
+
     const signers: TreasurySignerRow[] = input.signers.map((s, index) => {
       const onChain = permission.keys.find((k) =>
         addressesEqual(k.address, s.address),
@@ -238,6 +245,14 @@ export class TreasuryConfigService {
         weight: onChain.weight,
       };
     });
+
+    const weightSum = signers.reduce((sum, s) => sum + s.weight, 0);
+    if (weightSum < permission.threshold) {
+      throw new TreasuryConfigError(
+        `Allowlisted signer weight ${weightSum} is below permission threshold ${permission.threshold}`,
+        422,
+      );
+    }
 
     const candidate = mergeTreasuryConfig(this.policy, {
       treasuryAddress: input.treasuryAddress,

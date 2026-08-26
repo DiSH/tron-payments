@@ -8,7 +8,7 @@ last_reviewed: 2026-08-19
 
 # TRON Payments — Project Bible
 
-Authoritative reference for AI agents, Cursor, and human contributors working on the **TRON multisig 2-of-3 USDT treasury** MVP.
+Authoritative reference for AI agents, Cursor, and human contributors working on the **TRON multisig USDT treasury** MVP.
 
 Read this document **before** making any change. If this document conflicts with running code, migrations, or production behavior, stop and explicitly document the mismatch before changing anything.
 
@@ -33,14 +33,14 @@ The original technical specification (TZ) is the source requirement set; this bi
 
 ### 1.1 Purpose
 
-Internal tool for **remote coordination and execution of USDT TRC-20 payments** from a single corporate TRON treasury address using on-chain **2-of-3 multisig**.
+Internal tool for **remote coordination and execution of USDT TRC-20 payments** from a single corporate TRON treasury address using on-chain **multisig** (M-of-N Active Permission; allowlisted signer count configured in Admin UI).
 
-Three finance operators in different locations must be able to:
+Finance operators in different locations must be able to:
 
 1. Create a payment request.
 2. Independently review payment details.
 3. Sign the **same TRON transaction** with their Ledger devices (browser WebHID).
-4. Collect two of three signatures.
+4. Collect signatures until the configured on-chain weight threshold is met.
 5. Verify signatures belong to allowlisted keys and meet the weight threshold.
 6. Broadcast to TRON mainnet only after threshold is reached.
 7. Maintain an immutable audit log of requests, signatures, and on-chain results.
@@ -54,8 +54,8 @@ Three finance operators in different locations must be able to:
 | Token | USDT TRC-20 only |
 | Operation | `transfer(address,uint256)` only |
 | Permission | One Active Permission group on treasury |
-| Signers | Three pre-registered Ledger signer addresses |
-| Threshold | 2 of 3 |
+| Signers | Admin-allowlisted Ledger signer addresses from that permission (N ≥ 1) |
+| Threshold | On-chain Active Permission threshold (stored in DB; not edited in UI) |
 
 ### 1.3 MVP Scope (Out)
 
@@ -73,24 +73,22 @@ Do **not** implement in MVP:
 
 ### 1.4 On-Chain Preconditions (configured outside MVP)
 
-Treasury must already have TRON native permissions:
+Treasury must already have TRON native permissions. Example (2-of-2):
 
 ```text
 Owner Permission:
   Key1 — weight 1
   Key2 — weight 1
-  Key3 — weight 1
   threshold = 2
 
 Active Permission (Treasury payments):
   Key1 — weight 1
   Key2 — weight 1
-  Key3 — weight 1
   threshold = 2
   allows TriggerSmartContract
 ```
 
-MVP **reads and verifies** these permissions at startup and before each payment. It **never modifies** them.
+Typical production setup may use more keys (e.g. 2-of-3). MVP **reads and verifies** these permissions at startup and before each payment. It **never modifies** them.
 
 ---
 
@@ -109,7 +107,7 @@ These rules override convenience, speed, and feature requests.
 | **Browser WebHID transport** | SPA connects to Ledger via WebHID (`@ledgerhq/hw-transport-webhid`); backend never accesses Ledger |
 | **Immutable payload** | All signatures bind to one canonical transaction payload |
 | **No post-signature edits** | Recipient, amount, token, treasury, permission ID, expiration cannot change after first signature |
-| **Threshold gate** | Broadcast only after independent verification of weight ≥ 2 |
+| **Threshold gate** | Broadcast only after independent verification of weight ≥ configured threshold |
 | **No raw tx upload** | UI must not accept arbitrary raw transactions or calldata |
 
 ### 2.2 Explicit Prohibitions for Coding Agents
@@ -123,7 +121,7 @@ Agents must **never**:
 - Accept arbitrary raw transactions or smart contract methods from UI
 - Allow on-chain permission changes through MVP
 - Use `float` or JavaScript `number` for USDT amounts
-- Broadcast without server-side signature verification and verified weight ≥ 2
+- Broadcast without server-side signature verification and verified weight ≥ configured threshold
 - Auto-retry broadcast on ambiguous results
 - Move mainnet funds before testnet POC and acceptance tests pass
 
@@ -303,7 +301,7 @@ After first signature: **no edits**. New payment = new request + new txID.
 
 ### 7.3 Broadcast Flow
 
-Allowed only when: status `READY_TO_BROADCAST`, not expired, payload unchanged, signatures verified, on-chain weight ≥ 2, treasury permissions still match config, balances sufficient.
+Allowed only when: status `READY_TO_BROADCAST`, not expired, payload unchanged, signatures verified, on-chain weight ≥ configured threshold, treasury permissions still match config, balances sufficient.
 
 Executor confirms → backend broadcasts → worker waits for confirmation → status update + TronScan link.
 
@@ -349,7 +347,7 @@ Implementation lives in `packages/shared`. Must have unit tests for determinism.
 
 Deployment env (`.env`) holds infrastructure and payment policy: network, TRON RPC, USDT contract, limits, DB, auth secrets.
 
-**Treasury address, Active Permission ID, threshold, and signer A/B/C addresses are not in `.env`.** They are configured by an Admin in the web UI (`/admin/treasury`), stored in PostgreSQL (`treasury_settings`), and validated against on-chain account permissions. On-chain multisig itself is set up outside the app (e.g. TronLink).
+**Treasury address, Active Permission ID, threshold, and allowlisted signer addresses are not in `.env`.** They are configured by an Admin in the web UI (`/admin/treasury`), stored in PostgreSQL (`treasury_settings`), and validated against on-chain account permissions. Threshold is taken from the selected Active Permission on-chain; the admin chooses how many keys to allowlist (N). On-chain multisig itself is set up outside the app (e.g. TronLink).
 
 ### 9.1 Startup Validation
 
@@ -358,7 +356,7 @@ On every backend start (and after admin save / before each new request/broadcast
 - If treasury is not configured → API starts, but create/broadcast are blocked; admin is prompted to configure
 - Treasury address exists on-chain
 - Active Permission ID exists with threshold matching the stored config
-- Signer keys/weights match config A/B/C
+- Signer keys/weights match the allowlisted config (combined weight ≥ threshold)
 - Active Permission allows `TriggerSmartContract`
 - USDT contract address matches expected (policy from env)
 - Network is mainnet (in production)
@@ -546,14 +544,14 @@ MVP acceptance criteria (§16) are release gates, not per-PR gates.
 
 MVP is ready only when **all** are true:
 
-- [ ] Treasury on-chain: Active Permission A/B/C, weights 1/1/1, threshold 2
-- [ ] Full path tested with two Ledgers on different machines/locations
+- [ ] Treasury on-chain: Active Permission with allowlisted keys and threshold matching Admin config
+- [ ] Full path tested with Ledgers on different machines/locations
 - [ ] No seed phrase or private key enters the system
-- [ ] Single signer cannot broadcast
-- [ ] Second signer sees full payment details before signing
+- [ ] Signatures below threshold cannot broadcast
+- [ ] Additional signer sees full payment details before signing
 - [ ] Payload immutable after first signature
 - [ ] Backend verifies signatures and on-chain weight before broadcast
-- [ ] Broadcast impossible at weight < 2
+- [ ] Broadcast impossible when weight < configured threshold
 - [ ] Immutable audit trail exists
 - [ ] Transaction expiration works
 - [ ] Testnet acceptance suite passed

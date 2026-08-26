@@ -1,6 +1,6 @@
 # TRON Payments
 
-Internal tool for remote **2-of-3 multisig USDT TRC-20 payments** from a corporate TRON treasury address using Ledger hardware wallets.
+Internal tool for remote **multisig USDT TRC-20 payments** from a corporate TRON treasury address using Ledger hardware wallets.
 
 ## Quick Start
 
@@ -72,7 +72,7 @@ docs/        Architecture, runbooks, threat model
 - Ledger signing happens in the Web SPA via WebHID; the backend never accesses Ledger hardware
 - Backend verifies signatures cryptographically and checks on-chain weight before broadcast
 - MVP supports only USDT TRC-20 `transfer(address,uint256)` on TRON mainnet
-- App role `signer` is distinct from on-chain 2-of-3 keys; Admin assigns both role and treasury allowlist
+- App role `signer` is distinct from on-chain multisig keys; Admin assigns both role and treasury allowlist
 
 ## License
 

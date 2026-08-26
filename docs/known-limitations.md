@@ -7,7 +7,7 @@ Documented limitations will include:
 - Single treasury address
 - USDT TRC-20 only, `transfer` method only
 - TRON Mainnet only
-- Three fixed signers, 2-of-3 threshold
+- Allowlisted signer count and threshold from on-chain Active Permission (configured in Admin UI)
 - No batch payments
 - No on-chain permission management
 - Manual Executor broadcast (no auto-broadcast by default)
